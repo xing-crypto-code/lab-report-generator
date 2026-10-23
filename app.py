@@ -21,9 +21,7 @@ from modules.filler import generate_report, compare_models, list_available_model
 from modules.generator import generate_report_document
 from modules.knowledge import build_standard_template, EXPERIMENT_TYPES
 
-# ─── 模型列表 ───
-MODEL_CHOICES = [(v["label"], k) for k, v in _get_models_sorted()]  # defined below
-
+# ─── 模型列表（延迟计算，避免导入时序问题） ───
 
 def _get_models_sorted():
     """返回按推荐排序的模型"""
@@ -48,6 +46,9 @@ def _get_models_sorted():
         if mid not in seen:
             result[mid] = info
     return result
+
+def _get_model_choices():
+    return [(v["label"], k) for k, v in _get_models_sorted().items()]
 
 
 def process_files(manual_file, template_file, api_key, api_base, model, use_builtin_template):
@@ -189,7 +190,7 @@ def build_ui():
             with gr.Row():
                 model_sel = gr.Dropdown(
                     label="🤖 AI 模型",
-                    choices=MODEL_CHOICES,
+                    choices=_get_model_choices(),
                     value="deepseek-ai/DeepSeek-V3",
                     interactive=True,
                     scale=3,
