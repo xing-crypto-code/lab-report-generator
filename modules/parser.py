@@ -2,6 +2,8 @@
 文档解析模块 · parser.py
 职责：识别用户上传的实验指导手册（PDF / 图片），
       提取其中的文字、表格、实验步骤、数据等信息。
+
+OCR 引擎：EasyOCR（支持 80+ 语言，中文识别优秀，Python 3.14 兼容）
 """
 import fitz  # PyMuPDF
 from PIL import Image
@@ -9,23 +11,24 @@ import io
 from pathlib import Path
 from typing import Optional
 
-from config import OCR_LANG, OCR_USE_GPU, TABLE_RECOGNITION
+from config import OCR_LANG, OCR_USE_GPU
 
-# PaddleOCR 延迟加载（首次调用时初始化，避免启动卡顿）
-_ocr = None
+# EasyOCR 延迟加载（首次调用时初始化，避免启动卡顿）
+_reader = None
 
-def _get_ocr():
-    """单例模式获取 PaddleOCR 实例"""
-    global _ocr
-    if _ocr is None:
-        from paddleocr import PaddleOCR
-        _ocr = PaddleOCR(
-            lang=OCR_LANG,
-            use_gpu=OCR_USE_GPU,
-            show_log=False,
-            enable_table=TABLE_RECOGNITION
+def _get_reader():
+    """单例模式获取 EasyOCR Reader 实例"""
+    global _reader
+    if _reader is None:
+        import easyocr
+        # EasyOCR 语言代码: ch_sim=简体中文, en=英文
+        lang_list = ["ch_sim", "en"] if OCR_LANG == "ch" else ["en"]
+        _reader = easyocr.Reader(
+            lang_list=lang_list,
+            gpu=OCR_USE_GPU,
+            verbose=False
         )
-    return _ocr
+    return _reader
 
 
 def parse_pdf(file_path: str) -> dict:
@@ -34,7 +37,6 @@ def parse_pdf(file_path: str) -> dict:
     {
         "text": "整段文字内容",
         "tables": [["表头", "列2"], ["数据1", "数据2"]],
-        "images": ["图片base64或路径"],
         "page_count": 页数
     }
     """
@@ -46,12 +48,12 @@ def parse_pdf(file_path: str) -> dict:
     for page_num in range(page_count):
         page = doc[page_num]
 
-        # 1. 提取文字
+        # 1. 提取文字（电子版 PDF）
         text = page.get_text("text")
         if text.strip():
             full_text.append(f"--- 第 {page_num+1} 页 ---\n{text}")
 
-        # 2. 提取图片 → OCR 识别（处理扫描版 PDF）
+        # 2. 提取图片 → OCR 识别（处理扫描版 PDF / 照片）
         images = page.get_images(full=True)
         for img_index, img in enumerate(images):
             xref = img[0]
@@ -59,7 +61,6 @@ def parse_pdf(file_path: str) -> dict:
             image_bytes = base_image["image"]
             pil_image = Image.open(io.BytesIO(image_bytes))
 
-            # OCR 识别图片中的文字和表格
             ocr_result = ocr_image(pil_image)
             if ocr_result["text"]:
                 full_text.append(
@@ -78,24 +79,23 @@ def parse_pdf(file_path: str) -> dict:
 
 def ocr_image(image: Image.Image) -> dict:
     """
-    对单张图片做 OCR（文字 + 表格识别）
+    对单张图片做 OCR 识别
     返回 { "text": "识别文字", "tables": [表格列表] }
     """
-    ocr = _get_ocr()
-    result = ocr.ocr(image)
+    import numpy as np
+
+    # PIL → OpenCV 格式（RGB → BGR）
+    img_array = np.array(image.convert("RGB"))
+    img_bgr = img_array[:, :, ::-1].copy()  # RGB → BGR
+
+    reader = _get_reader()
+    results = reader.readtext(img_bgr)
 
     texts = []
     tables = []
 
-    if not result or not result[0]:
-        return {"text": "", "tables": []}
-
-    for item in result[0]:
-        if item is None:
-            continue
-        # item 格式: [坐标, (文字, 置信度)]
-        if len(item) >= 2:
-            text = item[1][0] if isinstance(item[1], (tuple, list)) else str(item[1])
+    for bbox, text, confidence in results:
+        if confidence > 0.3:  # 过滤低置信度
             texts.append(text)
 
     return {
@@ -105,17 +105,13 @@ def ocr_image(image: Image.Image) -> dict:
 
 
 def parse_image(file_path: str) -> dict:
-    """
-    解析单张图片文件（照片/截图）
-    """
+    """解析单张图片文件（照片/截图）"""
     image = Image.open(file_path)
     return ocr_image(image)
 
 
 def parse_document(file_path: str) -> dict:
-    """
-    统一入口：自动判断 PDF 还是图片，返回统一结构
-    """
+    """统一入口：自动判断 PDF 还是图片，返回统一结构"""
     ext = Path(file_path).suffix.lower()
     if ext == ".pdf":
         return parse_pdf(file_path)

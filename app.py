@@ -9,6 +9,12 @@ import os
 from pathlib import Path
 import shutil
 
+# 先把本地 libs 目录加入 sys.path（免 venv 方案）
+import sys
+_libs = str(Path(__file__).resolve().parent / "libs")
+if _libs not in sys.path:
+    sys.path.insert(0, _libs)
+
 from config import UPLOAD_DIR, OUTPUT_DIR
 from modules.parser import parse_document, parse_pdf, parse_image
 from modules.template import analyze_template, get_template_summary
@@ -16,7 +22,7 @@ from modules.filler import generate_report
 from modules.generator import generate_report_document
 
 
-def process_files(manual_file, template_file, api_key):
+def process_files(manual_file, template_file, api_key, api_base, model):
     """
     核心处理流水线：
     1. 解析上传的实验指导手册 → OCR 提取内容
@@ -29,16 +35,20 @@ def process_files(manual_file, template_file, api_key):
     if template_file is None:
         return None, None, "❌ 请上传老师发的实验报告模板（.docx）"
 
-    # 设置 API Key（如果用户填了）
-    if api_key and api_key.strip() and not api_key.startswith("sk-your"):
+    # 设置 API 配置（优先用界面上填的）
+    if api_key and api_key.strip():
         os.environ["LLM_API_KEY"] = api_key.strip()
+    if api_base and api_base.strip():
+        os.environ["LLM_BASE_URL"] = api_base.strip()
+    if model and model.strip():
+        os.environ["LLM_MODEL"] = model.strip()
 
     status_lines = []
 
     try:
         # ---- 第1步：解析实验指导手册 ----
         status_lines.append("🔍 正在解析实验指导手册...")
-        manual_path = str(manual_file.name) if hasattr(manual_file, 'name') else manual_file
+        manual_path = str(manual_file)
         doc_result = parse_document(manual_path)
         ocr_text = doc_result["text"]
         ocr_tables = doc_result["tables"]
@@ -47,12 +57,13 @@ def process_files(manual_file, template_file, api_key):
 
         # ---- 第2步：解析模板 ----
         status_lines.append("📋 正在解析实验报告模板结构...")
-        template_path = str(template_file.name) if hasattr(template_file, 'name') else template_file
+        template_path = str(template_file)
         template_analysis = analyze_template(template_path)
         template_summary = get_template_summary(template_analysis)
         status_lines.append(f"   ✓ 识别 {template_analysis['total_paragraphs']} 个段落，"
                            f"{template_analysis['total_tables']} 个表格")
-        status_lines.append(f"   ✓ 检测到章节: {', '.join(template_analysis['sections_found'][:8])}")
+        sections = template_analysis.get("sections_found", [])
+        status_lines.append(f"   ✓ 检测到章节: {', '.join(sections[:8])}")
         status_lines.append("")
 
         # ---- 第3步：AI 填充 ----
@@ -67,8 +78,6 @@ def process_files(manual_file, template_file, api_key):
 
         # ---- 第4步：生成文档 ----
         status_lines.append("📝 正在生成最终文档...")
-
-        # 从 manual 文件名推断输出名称
         manual_name = Path(manual_path).stem
         output_name = f"{manual_name}_实验报告"
 
@@ -76,24 +85,17 @@ def process_files(manual_file, template_file, api_key):
             template_path=template_path,
             filled_data=filled,
             output_name=output_name,
-            to_pdf=False  # 默认只生成 .docx（PDF 需要装 Word）
+            to_pdf=False
         )
 
         docx_path = result_paths.get("docx", "")
         if docx_path and Path(docx_path).exists():
             status_lines.append(f"   ✓ 文档已生成: {Path(docx_path).name}")
             status_lines.append("")
-            status_lines.append("---")
-            status_lines.append("✅ **完成！请下载下方的 .docx 文件，用 WPS/Office Word 打开微调后直接交作业。**")
+            status_lines.append("✅ **完成！请下载下方的 .docx 文件，用 WPS/Office Word 微调后直接交作业。**")
 
-            # 显示填充内容预览
             preview = _build_preview(filled_sections, template_analysis)
-
-            return (
-                str(docx_path),  # 下载文件
-                preview,         # 预览区
-                "\n".join(status_lines)  # 状态日志
-            )
+            return (str(docx_path), preview, "\n".join(status_lines))
         else:
             status_lines.append("   ❌ 文档生成失败")
             return None, None, "\n".join(status_lines)
@@ -101,45 +103,37 @@ def process_files(manual_file, template_file, api_key):
     except Exception as e:
         import traceback
         status_lines.append(f"\n❌ 处理出错: {e}")
-        status_lines.append(f"```\n{traceback.format_exc()[:500]}\n```")
+        status_lines.append(f"```\n{traceback.format_exc()[:800]}\n```")
         return None, None, "\n".join(status_lines)
 
 
 def _build_preview(filled_sections: dict, template_analysis: dict) -> str:
     """生成填充内容预览的 Markdown 文本"""
     lines = ["# 📄 实验报告内容预览\n"]
-
     for section_name, content in filled_sections.items():
         if content and content.strip() and content.strip() != "[待补充]":
-            # 限制预览长度
             preview = content[:300] + ("..." if len(content) > 300 else "")
             lines.append(f"## {section_name}")
             lines.append(preview)
             lines.append("")
-
     if len(lines) == 1:
         lines.append("*（AI 未生成内容，请检查 API 配置或重试）*")
-
     return "\n".join(lines)
 
 
 # ==================== Gradio 界面 ====================
 
 def build_ui():
-    """构建 Gradio Web 界面"""
     with gr.Blocks(
         title="无痛实验报告生成器",
         theme=gr.themes.Soft(primary_hue="blue"),
     ) as demo:
 
-        # ---- 标题 ----
         gr.Markdown("""
         # 🧪 无痛实验报告生成器
-        > **解放工科生双手** — 上传实验指导手册 + 老师模板，AI 自动生成可交作业的实验报告
-
+        > **解放工科生双手** — 上传实验指导手册 + 老师模板，AI 一键生成可交作业的实验报告
         """)
 
-        # ---- 输入区 ----
         with gr.Row():
             with gr.Column(scale=1):
                 gr.Markdown("### 📥 第1步：上传实验指导手册")
@@ -148,7 +142,7 @@ def build_ui():
                     file_types=[".pdf", ".png", ".jpg", ".jpeg", ".bmp", ".webp"],
                     type="filepath",
                 )
-                gr.Markdown("*支持 PDF、照片、截图*")
+                gr.Markdown("*支持 PDF / 照片 / 截图*")
 
             with gr.Column(scale=1):
                 gr.Markdown("### 📋 第2步：上传实验报告模板")
@@ -159,81 +153,93 @@ def build_ui():
                 )
                 gr.Markdown("*支持 .docx 格式（WPS/Word 模板）*")
 
-        # ---- API Key ----
-        with gr.Accordion("⚙️ API 设置（可选，也可在 .env 中配置）", open=False):
-            api_key_input = gr.Textbox(
-                label="API Key",
-                placeholder="sk-... （DeepSeek 注册即送 500万 tokens）",
-                type="password"
-            )
+        # API 配置面板
+        with gr.Accordion("⚙️ API 设置（免费方案见下方说明）", open=True):
+            with gr.Row():
+                api_key_input = gr.Textbox(
+                    label="API Key",
+                    placeholder="sk-... 支持 DeepSeek / Qwen / GPT 等",
+                    type="password",
+                    value=os.getenv("LLM_API_KEY", "")
+                )
+            with gr.Row():
+                api_base_input = gr.Textbox(
+                    label="API 地址",
+                    value="https://api.deepseek.com",
+                    placeholder="https://api.deepseek.com"
+                )
+                model_input = gr.Textbox(
+                    label="模型名称",
+                    value="deepseek-chat",
+                    placeholder="deepseek-chat / qwen-turbo / gpt-4o-mini"
+                )
             gr.Markdown("""
-            > **没有 API Key？** [注册 DeepSeek](https://platform.deepseek.com) 新用户免费获得 500万 tokens。
-            > 也支持 OpenAI / Qwen / 其他兼容 API，在 `.env` 文件里修改 `LLM_BASE_URL` 即可。
+            ### 🆓 免费 API 获取方式
+
+            | 平台 | 免费额度 | 获取方式 |
+            |------|----------|----------|
+            | **DeepSeek** | 注册送 500万 tokens | [platform.deepseek.com](https://platform.deepseek.com) → API Keys |
+            | **阿里百炼 Qwen** | 100万 tokens/月 免费 | [bailian.console.aliyun.com](https://bailian.console.aliyun.com) |
+            | **硅基流动 SiliconFlow** | 14元免费额度 | [siliconflow.cn](https://siliconflow.cn) → 支持 DeepSeek/Qwen 等 |
+            | **Cloudflare Workers AI** | 10万次/天 | 需配置 Worker，支持 Llama 等开源模型 |
+
+            > ⚡ **推荐**：DeepSeek 注册即用，API 地址填 `https://api.deepseek.com`，模型 `deepseek-chat`。
+            > 也可在项目目录创建 `.env` 文件永久保存配置，无需每次填入。
             """)
 
-        # ---- 生成按钮 ----
         with gr.Row():
             generate_btn = gr.Button("🚀 一键生成实验报告", variant="primary", size="lg")
 
-        # ---- 输出区 ----
         gr.Markdown("---")
 
         with gr.Row():
             with gr.Column(scale=1):
                 gr.Markdown("### 📥 下载文件")
                 download_output = gr.File(label="生成的实验报告 (.docx)")
-
             with gr.Column(scale=2):
                 gr.Markdown("### 📄 内容预览")
                 preview_output = gr.Markdown(value="*等待生成...*")
 
-        # ---- 处理日志 ----
         with gr.Accordion("🔍 处理日志", open=False):
             status_output = gr.Textbox(label="详细日志", lines=12, max_lines=30)
 
-        # ---- 绑定事件 ----
         generate_btn.click(
             fn=process_files,
-            inputs=[manual_input, template_input, api_key_input],
+            inputs=[manual_input, template_input, api_key_input, api_base_input, model_input],
             outputs=[download_output, preview_output, status_output],
         )
 
-        # ---- 使用说明 ----
         gr.Markdown("""
         ---
         ### 📖 使用说明
 
-        1. **准备文件**：把实验指导手册（PDF或拍照）和老师发的模板（.docx）准备好
-        2. **上传文件**：分别拖入上方两个上传框
-        3. **配置 API**：填入 DeepSeek API Key（或在项目目录创建 `.env` 文件配置）
-        4. **一键生成**：点击按钮，等待 10-30 秒
-        5. **下载文档**：下载生成的 .docx，用 WPS / Office Word 打开微调即可交作业
+        1. **准备文件**：实验指导手册（PDF/照片）+ 老师发的 .docx 模板
+        2. **获取 API Key**：上方表格任选一个免费平台注册获取
+        3. **上传 + 配置**：拖入文件，填入 API Key
+        4. **一键生成**：等待 10-30 秒，下载 .docx
+        5. **微调交作业**：WPS / Office Word 打开微调格式即可
 
         ### ⚡ 技术栈
 
         | 环节 | 技术 |
         |------|------|
-        | OCR 识别 | PaddleOCR（中文最佳） |
+        | OCR 识别 | EasyOCR（中文+英文） |
         | PDF 解析 | PyMuPDF |
-        | AI 润色填充 | DeepSeek / GPT / Qwen 等 OpenAI 兼容 API |
-        | 文档生成 | python-docx（保持原格式） |
+        | AI 润色填充 | DeepSeek / Qwen / GPT（OpenAI 兼容） |
+        | 文档生成 | python-docx（保持原模板格式） |
 
         ### 🔗 链接
-
         - 📦 [GitHub 仓库](https://github.com/xing-crypto-code/lab-report-generator)
-        - 🔑 [获取 DeepSeek API Key](https://platform.deepseek.com/api_keys)
         """)
 
     return demo
 
-
-# ==================== 启动入口 ====================
 
 if __name__ == "__main__":
     demo = build_ui()
     demo.launch(
         server_name="0.0.0.0",
         server_port=7860,
-        share=False,  # 改为 True 可生成公网链接
+        share=False,
         show_error=True,
     )

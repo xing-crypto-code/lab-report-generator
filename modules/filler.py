@@ -93,22 +93,30 @@ def generate_report(
 
 只返回 JSON，不要其他内容。"""
 
+    # 构建 API 调用参数
+    api_kwargs = {
+        "model": LLM_MODEL,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        "temperature": 0.3,
+        "max_tokens": 4096,
+    }
+    # JSON 模式并非所有免费 API 都支持，先不加，靠 prompt 约束
+    # 如需开启：api_kwargs["response_format"] = {"type": "json_object"}
+
     for attempt in range(MAX_RETRY):
         try:
-            response = client.chat.completions.create(
-                model=LLM_MODEL,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.3,  # 降低随机性，保证稳定输出
-                max_tokens=4096,
-                response_format={"type": "json_object"}  # JSON 模式
-            )
+            response = client.chat.completions.create(**api_kwargs)
             content = response.choices[0].message.content
 
-            # 解析 JSON
-            import json
+            # 解析 JSON（兼容 markdown 代码块包裹的情况）
+            import json, re
+            # 尝试提取 ```json ... ``` 中的内容
+            m = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', content, re.DOTALL)
+            if m:
+                content = m.group(1).strip()
             result = json.loads(content)
 
             return {
