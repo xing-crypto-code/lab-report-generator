@@ -1,0 +1,23 @@
+# === 无痛实验报告生成器 · 依赖清单 ===
+
+# ---------- Web 框架 ----------
+gradio>=4.0.0
+
+# ---------- 文档解析 ----------
+PyMuPDF>=1.23.0          # PDF 文字 + 表格提取
+pdfplumber>=0.10.0       # 备选 PDF 表格提取
+Pillow>=10.0.0           # 图片处理
+paddlepaddle>=3.0.0      # PaddleOCR 推理引擎
+paddleocr>=2.7.0         # 中文 OCR（文字 + 表格）
+
+# ---------- 文档生成 ----------
+python-docx>=1.1.0       # .docx 读取/写入，保持格式
+docx2pdf>=0.1.8          # .docx → .pdf（Windows 用 COM）
+reportlab>=4.0.0         # 备选 PDF 生成
+
+# ---------- AI 接口 ----------
+openai>=1.0.0            # OpenAI 兼容 API (DeepSeek/Qwen/GPT)
+
+# ---------- 工具 ----------
+python-dotenv>=1.0.0     # 环境变量管理（API Key）
+lxml>=4.9.0              # XML 处理（python-docx 依赖）

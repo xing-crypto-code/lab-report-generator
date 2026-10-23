@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# 虚拟环境
+venv/
+.venv/
+env/
+
+# 环境配置（含敏感 API Key）
+.env
+
+# 用户上传和输出（运行时文件夹）
+uploads/*
+outputs/*
+temp/*
+!uploads/.gitkeep
+!outputs/.gitkeep
+!temp/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Gradio
+gradio_cached_examples/
+flagged/
