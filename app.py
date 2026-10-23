@@ -5,14 +5,25 @@
 
 启动：python app.py  →  浏览器打开 http://127.0.0.1:7860
 """
-import gradio as gr
-import os
-from pathlib import Path
-
+# ⚠️  必须最先：把 libs/ 加入 sys.path，否则找不到 pip 安装的包
 import sys
+from pathlib import Path
 _libs = str(Path(__file__).resolve().parent / "libs")
 if _libs not in sys.path:
     sys.path.insert(0, _libs)
+
+# ⚠️  清理代理环境变量：本机代理(127.0.0.1:7890)与 NO_PROXY 中的 [::1] 语法
+# 会让 httpx/requests 在 gradio 内部构建 Client 时解析 URL 崩溃（Invalid port: ':1]'）。
+# 程序集 API 调用走内部配置，不受影响；HTTP(S)_PROXY 由 gen 子进程另行设置。
+import os as _os
+for _k in (
+    "HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy",
+    "ALL_PROXY", "all_proxy", "NO_PROXY", "no_proxy",
+):
+    _os.environ.pop(_k, None)
+
+import gradio as gr
+import os
 
 from config import UPLOAD_DIR, OUTPUT_DIR
 from modules.parser import parse_document
@@ -27,9 +38,11 @@ def _get_models_sorted():
     """返回按推荐排序的模型"""
     from modules.filler import SILICONFLOW_MODELS
     order = [
+        "deepseek-ai/DeepSeek-V4.1-Flash",
+        "deepseek-ai/DeepSeek-V4-Flash",
+        "deepseek-ai/DeepSeek-V4-Pro",
         "deepseek-ai/DeepSeek-V3",
         "deepseek-ai/DeepSeek-V3.2",
-        "deepseek-ai/DeepSeek-V4-Pro",
         "Qwen/Qwen3.5-35B-A3B",
         "Qwen/Qwen3.5-27B",
         "zai-org/GLM-5.3",
@@ -171,16 +184,16 @@ def build_ui():
             with gr.Column(scale=1):
                 gr.Markdown("#### 📥 实验指导手册")
                 manual_in = gr.File(
-                    label="上传 PDF / 照片 / 截图",
-                    file_types=[".pdf", ".png", ".jpg", ".jpeg", ".bmp", ".webp"],
+                    label="支持 PDF · Word · 图片 · 截图",
+                    file_types=[".pdf", ".docx", ".doc", ".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"],
                     type="filepath",
                 )
 
             with gr.Column(scale=1):
                 gr.Markdown("#### 📋 实验报告模板（可选）")
                 template_in = gr.File(
-                    label="老师发的 .docx 模板",
-                    file_types=[".docx"],
+                    label="支持 .docx / .doc 模板",
+                    file_types=[".docx", ".doc"],
                     type="filepath",
                 )
                 use_builtin = gr.Checkbox(label="☑ 没有模板 → 使用内置标准模板", value=True)
@@ -191,7 +204,7 @@ def build_ui():
                 model_sel = gr.Dropdown(
                     label="🤖 AI 模型",
                     choices=_get_model_choices(),
-                    value="deepseek-ai/DeepSeek-V3",
+                    value="deepseek-ai/DeepSeek-V4.1-Flash",
                     interactive=True,
                     scale=3,
                 )

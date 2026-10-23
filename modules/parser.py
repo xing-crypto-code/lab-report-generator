@@ -7,12 +7,32 @@ OCR 引擎：EasyOCR（支持 80+ 语言，中文识别优秀，Python 3.14 兼�
 """
 import fitz  # PyMuPDF
 from PIL import Image
+from docx import Document
 import io
 from pathlib import Path
 from typing import Optional
 
 from config import OCR_LANG, OCR_USE_GPU
 from modules.preprocessor import preprocess_for_ocr, detect_document_region
+
+def _detect_cuda() -> bool:
+    """
+    自动检测当前 torch 是否支持 CUDA（GPU 加速）。
+    只有装了 CUDA 版 torch 才返回 True，否则强制 CPU，
+    避免 EasyOCR 在无 CUDA 时报错。
+    """
+    try:
+        import torch
+        return bool(torch.cuda.is_available())
+    except Exception:
+        return False
+
+
+# GPU 可用性自动检测（覆盖 .env 的 OCR_USE_GPU）
+_CUDA_OK = _detect_cuda()
+if OCR_USE_GPU and not _CUDA_OK:
+    print("[parser] 检测到 OCR_USE_GPU=true，但当前 torch 为 CPU 版本，"
+          f"已自动降级为 CPU 模式。可尝试安装 CUDA 版 torch 使用 GPU 加速。")
 
 # EasyOCR 延迟加载（首次调用时初始化，避免启动卡顿）
 _reader = None
@@ -24,9 +44,10 @@ def _get_reader():
         import easyocr
         # EasyOCR 语言代码: ch_sim=简体中文, en=英文
         lang_list = ["ch_sim", "en"] if OCR_LANG == "ch" else ["en"]
+        use_gpu = OCR_USE_GPU and _CUDA_OK
         _reader = easyocr.Reader(
             lang_list=lang_list,
-            gpu=OCR_USE_GPU,
+            gpu=use_gpu,
             verbose=False
         )
     return _reader
@@ -115,12 +136,57 @@ def parse_image(file_path: str) -> dict:
     return ocr_image(image)
 
 
+def parse_docx(file_path: str) -> dict:
+    """
+    解析 .docx/.doc Word 文档的实验指导手册
+    （有些老师发的是 Word 版指导书）
+    """
+    # .doc（老格式）尝试用 python-docx，失败则报友好错误
+    ext = Path(file_path).suffix.lower()
+    if ext == ".doc":
+        try:
+            doc = Document(file_path)
+        except Exception:
+            raise ValueError(
+                "暂不支持 .doc 旧格式 Word 文档。"
+                "请用 WPS/Word 打开后「另存为」→ 选择 .docx 格式再上传。"
+            )
+    else:
+        doc = Document(file_path)
+
+    full_text = []
+    all_tables = []
+
+    # 提取段落文本
+    for i, para in enumerate(doc.paragraphs):
+        text = para.text.strip()
+        if text:
+            full_text.append(text)
+
+    # 提取表格
+    for table in doc.tables:
+        rows_data = []
+        for row in table.rows:
+            cells = [cell.text.strip() for cell in row.cells]
+            rows_data.append(cells)
+        if rows_data:
+            all_tables.append(rows_data)
+
+    return {
+        "text": "\n".join(full_text),
+        "tables": all_tables,
+        "page_count": None  # docx 没有明确页数概念
+    }
+
+
 def parse_document(file_path: str) -> dict:
-    """统一入口：自动判断 PDF 还是图片，返回统一结构"""
+    """统一入口：自动判断格式，返回统一结构"""
     ext = Path(file_path).suffix.lower()
     if ext == ".pdf":
         return parse_pdf(file_path)
-    elif ext in {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp"}:
+    elif ext in {".docx", ".doc"}:
+        return parse_docx(file_path)
+    elif ext in {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"}:
         return parse_image(file_path)
     else:
         raise ValueError(f"不支持的文件格式: {ext}")

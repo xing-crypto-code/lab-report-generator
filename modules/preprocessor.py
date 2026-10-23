@@ -21,9 +21,9 @@ def preprocess_for_ocr(image: Image.Image, mode: str = "auto") -> Image.Image:
     if image.mode != "RGB":
         image = image.convert("RGB")
 
-    # ---- 1. 自适应缩放（太大浪费 OCR 时间，太小丢细节）----
+    # ---- 1. 自适应缩放（限制最大尺寸，防内存峰值导致系统卡死）----
     w, h = image.size
-    max_dim = 2000
+    max_dim = 1600
     if max(w, h) > max_dim:
         ratio = max_dim / max(w, h)
         image = image.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
