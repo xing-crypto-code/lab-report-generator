@@ -1,83 +1,112 @@
 """
-无痛实验报告生成器 · Gradio Web 界面
-=====================================
-主入口：运行 `python app.py` 即可启动 Web 服务
-在浏览器中打开 http://127.0.0.1:7860 使用
+无痛实验报告生成器 · Gradio Web 界面 v2.0
+=========================================
+硅基流动 SiliconFlow 多模型支持 · 工科知识库 · 精致 UI
+
+启动：python app.py  →  浏览器打开 http://127.0.0.1:7860
 """
 import gradio as gr
 import os
 from pathlib import Path
-import shutil
 
-# 先把本地 libs 目录加入 sys.path（免 venv 方案）
 import sys
 _libs = str(Path(__file__).resolve().parent / "libs")
 if _libs not in sys.path:
     sys.path.insert(0, _libs)
 
 from config import UPLOAD_DIR, OUTPUT_DIR
-from modules.parser import parse_document, parse_pdf, parse_image
+from modules.parser import parse_document
 from modules.template import analyze_template, get_template_summary
-from modules.filler import generate_report
+from modules.filler import generate_report, compare_models, list_available_models, detect_experiment_type
 from modules.generator import generate_report_document
+from modules.knowledge import build_standard_template, EXPERIMENT_TYPES
+
+# ─── 模型列表 ───
+MODEL_CHOICES = [(v["label"], k) for k, v in _get_models_sorted()]  # defined below
 
 
-def process_files(manual_file, template_file, api_key, api_base, model):
-    """
-    核心处理流水线：
-    1. 解析上传的实验指导手册 → OCR 提取内容
-    2. 解析上传的模板 → 理解结构
-    3. 调 AI 填入模板 → 润色去重
-    4. 生成 .docx → 返回下载
-    """
+def _get_models_sorted():
+    """返回按推荐排序的模型"""
+    from modules.filler import SILICONFLOW_MODELS
+    order = [
+        "deepseek-ai/DeepSeek-V3",
+        "deepseek-ai/DeepSeek-V3.2",
+        "deepseek-ai/DeepSeek-V4-Pro",
+        "Qwen/Qwen3.5-35B-A3B",
+        "Qwen/Qwen3.5-27B",
+        "zai-org/GLM-5.3",
+        "zai-org/GLM-5.3-Flash",
+        "deepseek-ai/DeepSeek-R1",
+    ]
+    seen = set()
+    result = {}
+    for mid in order:
+        if mid in SILICONFLOW_MODELS:
+            result[mid] = SILICONFLOW_MODELS[mid]
+            seen.add(mid)
+    for mid, info in SILICONFLOW_MODELS.items():
+        if mid not in seen:
+            result[mid] = info
+    return result
+
+
+def process_files(manual_file, template_file, api_key, api_base, model, use_builtin_template):
+    """核心处理流水线"""
     if manual_file is None:
         return None, None, "❌ 请上传实验指导手册（PDF/照片）"
-    if template_file is None:
-        return None, None, "❌ 请上传老师发的实验报告模板（.docx）"
 
-    # 设置 API 配置（优先用界面上填的）
     if api_key and api_key.strip():
         os.environ["LLM_API_KEY"] = api_key.strip()
     if api_base and api_base.strip():
         os.environ["LLM_BASE_URL"] = api_base.strip()
-    if model and model.strip():
-        os.environ["LLM_MODEL"] = model.strip()
 
-    status_lines = []
+    status = []
 
     try:
-        # ---- 第1步：解析实验指导手册 ----
-        status_lines.append("🔍 正在解析实验指导手册...")
+        # ── 第1步：解析实验指导手册 + 图像预处理 ──
+        status.append("🔍 正在解析实验指导手册…")
         manual_path = str(manual_file)
         doc_result = parse_document(manual_path)
         ocr_text = doc_result["text"]
         ocr_tables = doc_result["tables"]
-        status_lines.append(f"   ✓ 识别 {len(ocr_text)} 字符，{len(ocr_tables)} 个表格")
-        status_lines.append("")
+        status.append(f"   ✓ 识别 {len(ocr_text):,} 字符，{len(ocr_tables)} 个表格")
 
-        # ---- 第2步：解析模板 ----
-        status_lines.append("📋 正在解析实验报告模板结构...")
-        template_path = str(template_file)
-        template_analysis = analyze_template(template_path)
-        template_summary = get_template_summary(template_analysis)
-        status_lines.append(f"   ✓ 识别 {template_analysis['total_paragraphs']} 个段落，"
-                           f"{template_analysis['total_tables']} 个表格")
-        sections = template_analysis.get("sections_found", [])
-        status_lines.append(f"   ✓ 检测到章节: {', '.join(sections[:8])}")
-        status_lines.append("")
+        # 自动检测实验类型
+        exp_type = detect_experiment_type(ocr_text)
+        status.append(f"   🔬 检测实验类型：{exp_type}")
+        status.append("")
 
-        # ---- 第3步：AI 填充 ----
-        status_lines.append("🤖 正在调用 AI 生成实验报告内容...")
-        filled = generate_report(ocr_text, ocr_tables, template_summary)
-        filled_sections = filled.get("sections", {})
-        filled_count = sum(1 for v in filled_sections.values() if v and v.strip())
-        status_lines.append(f"   ✓ AI 已填充 {filled_count} 个章节")
+        # ── 第2步：获取模板 ──
+        if template_file is not None:
+            status.append("📋 正在解析上传的模板…")
+            template_path = str(template_file)
+            template_analysis = analyze_template(template_path)
+            t_summary = get_template_summary(template_analysis)
+            status.append(f"   ✓ {template_analysis['total_paragraphs']} 段落，{template_analysis['total_tables']} 表格")
+        else:
+            status.append("📋 使用内置标准模板…")
+            tpl_bytes = build_standard_template(exp_type)
+            tpl_path = Path("temp") / "_builtin_template.docx"
+            tpl_path.write_bytes(tpl_bytes)
+            template_path = str(tpl_path)
+            template_analysis = analyze_template(template_path)
+            t_summary = get_template_summary(template_analysis)
+            status.append(f"   ✓ 已生成 {exp_type} 标准模板")
+        status.append("")
+
+        # ── 第3步：AI 填充 ──
+        status.append(f"🤖 正在调用 {model} 生成实验报告…")
+        filled = generate_report(ocr_text, ocr_tables, t_summary, model=model)
+        sections = filled.get("sections", {})
+        count = sum(1 for v in sections.values() if v and v.strip() and "[待补充]" not in v)
+        status.append(f"   ✓ AI 已填充 {count} 个章节")
+        status.append(f"   📝 模型：{filled.get('model_used', model)}")
         if filled.get("notes"):
-            status_lines.append(f"   ℹ️ {filled['notes']}")
-        status_lines.append("")
+            status.append(f"   ℹ️ {filled['notes'][:100]}")
+        status.append("")
 
-        # ---- 第4步：生成文档 ----
-        status_lines.append("📝 正在生成最终文档...")
+        # ── 第4步：生成文档 ──
+        status.append("📝 正在生成最终文档…")
         manual_name = Path(manual_path).stem
         output_name = f"{manual_name}_实验报告"
 
@@ -85,151 +114,147 @@ def process_files(manual_file, template_file, api_key, api_base, model):
             template_path=template_path,
             filled_data=filled,
             output_name=output_name,
-            to_pdf=False
         )
-
         docx_path = result_paths.get("docx", "")
         if docx_path and Path(docx_path).exists():
-            status_lines.append(f"   ✓ 文档已生成: {Path(docx_path).name}")
-            status_lines.append("")
-            status_lines.append("✅ **完成！请下载下方的 .docx 文件，用 WPS/Office Word 微调后直接交作业。**")
-
-            preview = _build_preview(filled_sections, template_analysis)
-            return (str(docx_path), preview, "\n".join(status_lines))
+            status.append(f"   ✓ 文档已生成：{Path(docx_path).name}")
+            status.append("")
+            status.append("✅ 完成！请下载 .docx 用 WPS/Office 打开微调后交作业。")
+            preview = _build_preview(sections, template_analysis)
+            return (str(docx_path), preview, "\n".join(status))
         else:
-            status_lines.append("   ❌ 文档生成失败")
-            return None, None, "\n".join(status_lines)
+            return None, None, "\n".join(status + ["❌ 生成失败"])
 
     except Exception as e:
         import traceback
-        status_lines.append(f"\n❌ 处理出错: {e}")
-        status_lines.append(f"```\n{traceback.format_exc()[:800]}\n```")
-        return None, None, "\n".join(status_lines)
+        status.append(f"\n❌ 出错：{e}")
+        status.append(f"```\n{traceback.format_exc()[:600]}\n```")
+        return None, None, "\n".join(status)
 
 
-def _build_preview(filled_sections: dict, template_analysis: dict) -> str:
-    """生成填充内容预览的 Markdown 文本"""
-    lines = ["# 📄 实验报告内容预览\n"]
-    for section_name, content in filled_sections.items():
-        if content and content.strip() and content.strip() != "[待补充]":
-            preview = content[:300] + ("..." if len(content) > 300 else "")
-            lines.append(f"## {section_name}")
-            lines.append(preview)
+def _build_preview(sections, analysis):
+    lines = ["# 📄 实验报告预览\n"]
+    for name, text in sections.items():
+        if text and text.strip() and "[待补充]" not in text:
+            p = text[:250] + ("…" if len(text) > 250 else "")
+            lines.append(f"## {name}")
+            lines.append(p)
             lines.append("")
-    if len(lines) == 1:
-        lines.append("*（AI 未生成内容，请检查 API 配置或重试）*")
-    return "\n".join(lines)
+    return "\n".join(lines) if len(lines) > 1 else "*（等待生成…）*"
 
 
-# ==================== Gradio 界面 ====================
+# ═══════════════════  UI  ═══════════════════
+
+CSS = """
+.gradio-container { max-width: 900px !important; margin: 0 auto; }
+.header-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 24px; color: white; margin-bottom: 20px; }
+.header-card h1 { font-size: 1.8em; margin: 0; }
+.header-card p { opacity: 0.9; margin: 8px 0 0 0; }
+.step-label { font-weight: 600; color: #374151; margin-bottom: 4px; }
+footer { visibility: hidden; }
+"""
+
 
 def build_ui():
-    with gr.Blocks(
-        title="无痛实验报告生成器",
-        theme=gr.themes.Soft(primary_hue="blue"),
-    ) as demo:
+    with gr.Blocks(title="无痛实验报告生成器", theme=gr.themes.Soft(primary_hue="indigo"), css=CSS) as demo:
 
-        gr.Markdown("""
-        # 🧪 无痛实验报告生成器
-        > **解放工科生双手** — 上传实验指导手册 + 老师模板，AI 一键生成可交作业的实验报告
+        gr.HTML("""
+        <div class="header-card">
+            <h1>🧪 无痛实验报告生成器</h1>
+            <p>上传实验指导手册（PDF/照片）+ 老师模板（可选），AI 一键生成标准实验报告</p>
+        </div>
         """)
 
-        with gr.Row():
+        # ── 上传区 ──
+        with gr.Row(equal_height=True):
             with gr.Column(scale=1):
-                gr.Markdown("### 📥 第1步：上传实验指导手册")
-                manual_input = gr.File(
-                    label="实验指导手册",
+                gr.Markdown("#### 📥 实验指导手册")
+                manual_in = gr.File(
+                    label="上传 PDF / 照片 / 截图",
                     file_types=[".pdf", ".png", ".jpg", ".jpeg", ".bmp", ".webp"],
                     type="filepath",
                 )
-                gr.Markdown("*支持 PDF / 照片 / 截图*")
 
             with gr.Column(scale=1):
-                gr.Markdown("### 📋 第2步：上传实验报告模板")
-                template_input = gr.File(
-                    label="老师发的模板 (.docx)",
+                gr.Markdown("#### 📋 实验报告模板（可选）")
+                template_in = gr.File(
+                    label="老师发的 .docx 模板",
                     file_types=[".docx"],
                     type="filepath",
                 )
-                gr.Markdown("*支持 .docx 格式（WPS/Word 模板）*")
+                use_builtin = gr.Checkbox(label="☑ 没有模板 → 使用内置标准模板", value=True)
 
-        # API 配置面板
-        with gr.Accordion("⚙️ API 设置（免费方案见下方说明）", open=True):
+        # ── 模型 & API ──
+        with gr.Accordion("⚙️ AI 模型 & API 设置", open=True):
             with gr.Row():
-                api_key_input = gr.Textbox(
-                    label="API Key",
-                    placeholder="sk-... 支持 DeepSeek / Qwen / GPT 等",
-                    type="password",
-                    value=os.getenv("LLM_API_KEY", "")
+                model_sel = gr.Dropdown(
+                    label="🤖 AI 模型",
+                    choices=MODEL_CHOICES,
+                    value="deepseek-ai/DeepSeek-V3",
+                    interactive=True,
+                    scale=3,
                 )
-            with gr.Row():
-                api_base_input = gr.Textbox(
-                    label="API 地址",
-                    value="https://api.deepseek.com",
-                    placeholder="https://api.deepseek.com"
-                )
-                model_input = gr.Textbox(
-                    label="模型名称",
-                    value="deepseek-chat",
-                    placeholder="deepseek-chat / qwen-turbo / gpt-4o-mini"
-                )
-            gr.Markdown("""
-            ### 🆓 免费 API 获取方式
+                with gr.Column(scale=1):
+                    api_key_in = gr.Textbox(
+                        label="API Key（留空=用 .env）",
+                        type="password",
+                        placeholder="sk-…",
+                    )
+                    api_base_in = gr.Textbox(
+                        label="API 地址",
+                        value="https://api.siliconflow.cn/v1",
+                    )
 
-            | 平台 | 免费额度 | 获取方式 |
-            |------|----------|----------|
-            | **DeepSeek** | 注册送 500万 tokens | [platform.deepseek.com](https://platform.deepseek.com) → API Keys |
-            | **阿里百炼 Qwen** | 100万 tokens/月 免费 | [bailian.console.aliyun.com](https://bailian.console.aliyun.com) |
-            | **硅基流动 SiliconFlow** | 14元免费额度 | [siliconflow.cn](https://siliconflow.cn) → 支持 DeepSeek/Qwen 等 |
-            | **Cloudflare Workers AI** | 10万次/天 | 需配置 Worker，支持 Llama 等开源模型 |
-
-            > ⚡ **推荐**：DeepSeek 注册即用，API 地址填 `https://api.deepseek.com`，模型 `deepseek-chat`。
-            > 也可在项目目录创建 `.env` 文件永久保存配置，无需每次填入。
-            """)
-
+        # ── 生成按钮 ──
         with gr.Row():
-            generate_btn = gr.Button("🚀 一键生成实验报告", variant="primary", size="lg")
+            btn = gr.Button("🚀 一键生成实验报告", variant="primary", size="lg", scale=1)
 
         gr.Markdown("---")
 
+        # ── 输出区 ──
         with gr.Row():
             with gr.Column(scale=1):
-                gr.Markdown("### 📥 下载文件")
-                download_output = gr.File(label="生成的实验报告 (.docx)")
+                gr.Markdown("#### 📥 下载")
+                download_out = gr.File(label="生成的实验报告 (.docx)")
             with gr.Column(scale=2):
-                gr.Markdown("### 📄 内容预览")
-                preview_output = gr.Markdown(value="*等待生成...*")
+                gr.Markdown("#### 📄 内容预览")
+                preview_out = gr.Markdown("*等待生成…*")
 
         with gr.Accordion("🔍 处理日志", open=False):
-            status_output = gr.Textbox(label="详细日志", lines=12, max_lines=30)
+            log_out = gr.Textbox(label="日志", lines=10, max_lines=25)
 
-        generate_btn.click(
+        btn.click(
             fn=process_files,
-            inputs=[manual_input, template_input, api_key_input, api_base_input, model_input],
-            outputs=[download_output, preview_output, status_output],
+            inputs=[manual_in, template_in, api_key_in, api_base_in, model_sel, use_builtin],
+            outputs=[download_out, preview_out, log_out],
         )
 
+        # ── 说明 ──
         gr.Markdown("""
         ---
-        ### 📖 使用说明
+        ### 📖 快速上手
 
-        1. **准备文件**：实验指导手册（PDF/照片）+ 老师发的 .docx 模板
-        2. **获取 API Key**：上方表格任选一个免费平台注册获取
-        3. **上传 + 配置**：拖入文件，填入 API Key
-        4. **一键生成**：等待 10-30 秒，下载 .docx
-        5. **微调交作业**：WPS / Office Word 打开微调格式即可
+        | 步骤 | 操作 |
+        |:---:|---|
+        | ① | 上传 **实验指导手册**（PDF 或拍照） |
+        | ② | 上传老师的 **报告模板** .docx（或勾选内置模板） |
+        | ③ | 选择 **AI 模型**（推荐 DeepSeek V3） |
+        | ④ | 点击 **一键生成**，下载 .docx 用 WPS 微调 |
 
-        ### ⚡ 技术栈
+        ### 🆓 免费使用
 
-        | 环节 | 技术 |
-        |------|------|
-        | OCR 识别 | EasyOCR（中文+英文） |
-        | PDF 解析 | PyMuPDF |
-        | AI 润色填充 | DeepSeek / Qwen / GPT（OpenAI 兼容） |
-        | 文档生成 | python-docx（保持原模板格式） |
+        API 走 **硅基流动 SiliconFlow**，新用户送 14 元额度，够生成数百份报告。
 
-        ### 🔗 链接
-        - 📦 [GitHub 仓库](https://github.com/xing-crypto-code/lab-report-generator)
+        ### 🔧 内置知识库
+
+        | 实验类型 | 标准章节 |
+        |---|---|
+        | 物理实验 | 目的 → 原理 → 器材 → 步骤 → 数据 → 处理 → 误差 → 结论 |
+        | 化学实验 | 目的 → 反应方程式 → 试剂仪器 → 步骤 → 数据 → 讨论 → 结论 |
+        | 电路实验 | 目的 → 电路图 → 仪器器件 → 步骤 → 波形/数据 → 误差分析 |
+        | 力学实验 | 目的 → 公式推导 → 仪器 → 步骤 → 数据图表 → 误差 → 结论 |
+
+        > AI 会自动识别实验类型并匹配相应的标准结构。OCR 前会进行图像去噪/增强/二值化预处理，提升识别率。
         """)
 
     return demo
@@ -237,9 +262,4 @@ def build_ui():
 
 if __name__ == "__main__":
     demo = build_ui()
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=False,
-        show_error=True,
-    )
+    demo.launch(server_name="0.0.0.0", server_port=7860, share=False, show_error=True)

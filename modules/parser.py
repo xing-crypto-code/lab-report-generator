@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 from config import OCR_LANG, OCR_USE_GPU
+from modules.preprocessor import preprocess_for_ocr, detect_document_region
 
 # EasyOCR 延迟加载（首次调用时初始化，避免启动卡顿）
 _reader = None
@@ -79,23 +80,27 @@ def parse_pdf(file_path: str) -> dict:
 
 def ocr_image(image: Image.Image) -> dict:
     """
-    对单张图片做 OCR 识别
+    对单张图片做 OCR 识别（含图像预处理增强）
     返回 { "text": "识别文字", "tables": [表格列表] }
     """
     import numpy as np
 
+    # ── 预处理 ──
+    processed = preprocess_for_ocr(image)
+
     # PIL → OpenCV 格式（RGB → BGR）
-    img_array = np.array(image.convert("RGB"))
-    img_bgr = img_array[:, :, ::-1].copy()  # RGB → BGR
+    img_array = np.array(processed.convert("RGB"))
+    img_bgr = img_array[:, :, ::-1].copy()
 
     reader = _get_reader()
-    results = reader.readtext(img_bgr)
+    results = reader.readtext(img_bgr, detail=1)
 
     texts = []
     tables = []
 
-    for bbox, text, confidence in results:
-        if confidence > 0.3:  # 过滤低置信度
+    for item in results:
+        bbox, text, confidence = item
+        if confidence > 0.3:
             texts.append(text)
 
     return {

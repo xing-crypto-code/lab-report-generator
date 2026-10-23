@@ -1,39 +1,87 @@
-# 无痛实验报告生成器 (Lab Report Generator)
+# 🧪 无痛实验报告生成器 (Lab Report Generator)
 
-> 解放工科生双手：做完实验，一键生成可直接交作业的实验报告。
+> **解放工科生双手**：上传实验指导手册 + 老师模板，AI 一键生成标准实验报告
 
-## 痛点
+[![GitHub](https://img.shields.io/badge/GitHub-xing--crypto--code-blue)](https://github.com/xing-crypto-code/lab-report-generator)
 
-工科生每天满课，做完实验后还要花大量时间写实验报告。本项目的目标是把"写实验报告"从几小时压缩到几分钟：
+## ✨ 特性
 
-- 上传实验指导手册（PDF / 照片 / 截图）→ 自动识别文字、图片、表格等数据信息，提取实验内容、步骤、数据表
-- 上传老师发的实验报告模板（Word / PDF）→ 自动理解模板结构
-- 智能生成 → 自动填入模板对应位置，润色、去重
-- 输出可编辑文档 → Word / PDF 互转，不乱码，可在 WPS / Office Word 中直接编辑微调后交作业
-- **格式稳定**：改一个地方不会导致全局错乱
+- 📷 **智能 OCR**：EasyOCR 中文识别 + 图像预处理（去噪/增强/二值化）
+- 🧠 **多模型支持**：硅基流动 SiliconFlow 11 款模型可选（DeepSeek V3/V4/Qwen/GLM）
+- 📚 **工科知识库**：6 大实验类型（物理/化学/电路/力学/光学/计算机）标准结构
+- 📝 **格式稳定**：python-docx 保持原模板格式，宋体正文 + 黑体标题，不乱码
+- 🎨 **精致 UI**：Gradio 现代界面，支持内置标准模板
+- 🆓 **免费使用**：硅基流动新用户 14 元额度，够生成数百份报告
 
-## 技术选型（规划中）
+## 🚀 快速开始
 
-| 模块 | 方案 |
-|------|------|
-| 文档解析 | pdfplumber / PyMuPDF / 表格识别 |
-| OCR | PaddleOCR / Tesseract |
-| 文档生成 | python-docx（保留模板格式） |
-| 转换 | LibreOffice / docx2pdf |
-| 智能生成 | 大模型 API（OpenAI 兼容 / 本地） |
+### 1. 安装依赖
 
-## 当前进度
+```bash
+pip install -r requirements.txt
+# 或手动：pip install gradio PyMuPDF easyocr torch python-docx openai pillow
+```
 
-- [x] 创建 GitHub 仓库
-- [ ] 确定实现形态（Web 应用 / 桌面 EXE / VS Code 插件）
-- [ ] 搭建项目骨架
-- [ ] 文档解析模块（PDF / 图片 OCR / 表格）
-- [ ] 模板解析模块
-- [ ] 内容生成与填充模块
-- [ ] 格式保持与转换模块
-- [ ] 测试与验收
+### 2. 配置 API Key
 
-## 仓库信息
+```bash
+cp .env.example .env
+# 编辑 .env，填入硅基流动 API Key（注册: https://siliconflow.cn）
+```
 
-- 仓库地址：https://github.com/xing-crypto-code/lab-report-generator
-- 作者：xing-crypto-code
+或直接在 Web 界面填写。
+
+### 3. 启动
+
+```bash
+python app.py
+# 浏览器打开 http://127.0.0.1:7860
+```
+
+### 4. 使用
+
+1. 上传实验指导手册（PDF / 照片）
+2. 上传老师的 .docx 模板（或勾选内置模板）
+3. 选择 AI 模型 → 点击「一键生成」
+4. 下载 .docx，WPS/Office 打开微调 → 交作业
+
+## 📂 项目结构
+
+```
+├── app.py                  # Gradio Web 主入口
+├── config.py               # 配置中心
+├── modules/
+│   ├── parser.py           # PDF/图片 OCR 解析
+│   ├── preprocessor.py     # 图像预处理（去噪/增强/纠偏）
+│   ├── template.py         # .docx 模板结构解析
+│   ├── filler.py           # AI 填充 + 多模型对比
+│   ├── knowledge.py        # 工科实验知识库 + 标准模板生成
+│   └── generator.py        # 文档生成（保持格式）
+├── templates/              # 内置模板目录
+├── outputs/                # 生成结果
+└── libs/                   # pip --target 安装目录
+```
+
+## 🔬 知识库覆盖
+
+| 实验类型 | 标准章节 |
+|----------|----------|
+| 物理实验 | 目的 → 原理 → 器材 → 步骤 → 数据 → 处理 → 误差 → 结论 |
+| 化学实验 | 目的 → 反应方程式 → 试剂仪器 → 步骤 → 数据 → 讨论 → 结论 |
+| 电路实验 | 目的 → 电路图 → 仪器器件 → 步骤 → 波形/数据 → 误差分析 |
+| 力学实验 | 目的 → 公式推导 → 仪器 → 步骤 → 数据图表 → 误差 → 结论 |
+| 光学实验 | 目的 → 光路图 → 仪器 → 步骤 → 数据 → 处理 → 误差 |
+| 计算机实验 | 目的 → 环境 → 算法说明 → 步骤与代码 → 结果分析 → 总结 |
+
+## 🤖 可用模型
+
+通过硅基流动 SiliconFlow，11+ 模型可选：
+
+- **DeepSeek V3 / V3.2 / V4 Pro / R1** — 综合能力优秀，中英文俱佳
+- **Qwen 3.5 27B / 35B / Qwen 3 32B** — 阿里通义千问，中文理解强
+- **GLM-5.3 / GLM-5.3 Flash / GLM-4 32B** — 智谱系列，中文优异
+- **DeepSeek-OCR** — 专用 OCR 模型（可选替代 EasyOCR）
+
+## 📄 License
+
+MIT
