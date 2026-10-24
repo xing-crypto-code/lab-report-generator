@@ -11,35 +11,107 @@ AI 填充模块 · filler.py
 from openai import OpenAI
 import time
 import os
-from config import LLM_API_KEY, LLM_BASE_URL, LLM_MODEL, MAX_RETRY
-from modules.knowledge import EXPERIMENT_TYPES, FORMAT_RULES, POLISH_GUIDELINES
+import json
+import re
+from config import (
+    LLM_API_KEY, LLM_BASE_URL, LLM_MODEL, MAX_RETRY,
+    SILICONFLOW_API_KEY, SILICONFLOW_BASE_URL,
+)
+from modules.knowledge import (
+    EXPERIMENT_TYPES, FORMAT_RULES, POLISH_GUIDELINES, DOMAIN_SPEC, ANTI_AI_STYLE,
+)
 
 _client_cache = {}
 
 # ─── 硅基流动可用模型列表 ───
 
 SILICONFLOW_MODELS = {
-    "deepseek-ai/DeepSeek-V3":       {"label": "DeepSeek V3 ⭐推荐",   "desc": "综合能力最强，中英文俱佳"},
-    "deepseek-ai/DeepSeek-V3.2":     {"label": "DeepSeek V3.2",       "desc": "V3 最新迭代，推理更强"},
-    "deepseek-ai/DeepSeek-R1":       {"label": "DeepSeek R1",         "desc": "深度推理模型，适合复杂分析"},
-    "deepseek-ai/DeepSeek-V4-Pro":   {"label": "DeepSeek V4 Pro",     "desc": "最新旗舰，质量最高"},
-    "Qwen/Qwen3.5-27B":              {"label": "Qwen 3.5 27B",        "desc": "阿里通义千问，中文优秀"},
-    "Qwen/Qwen3.5-35B-A3B":          {"label": "Qwen 3.5 35B",        "desc": "Qwen 大杯，中文理解强"},
-    "zai-org/GLM-5.3":               {"label": "GLM-5.3",             "desc": "智谱最新，中文优异"},
-    "zai-org/GLM-5.3-Flash":         {"label": "GLM-5.3 Flash ⚡",    "desc": "智谱轻量版，速度快"},
-    "Pro/deepseek-ai/DeepSeek-V3.2": {"label": "DeepSeek V3.2 Pro",   "desc": "Pro 加速版，更高并发"},
-    "Qwen/Qwen3-32B":                {"label": "Qwen 3 32B",          "desc": "Qwen3 中杯，平衡性能"},
-    "THUDM/GLM-4-32B-0414":          {"label": "ChatGLM 4 32B",       "desc": "清华智谱，老牌中文模型"},
+    "deepseek-ai/DeepSeek-V4.1-Flash": {"label": "DeepSeek V4.1 Flash ⭐最新", "desc": "2025-10 最新，速度/质量最佳平衡"},
+    "deepseek-ai/DeepSeek-V4-Flash":   {"label": "DeepSeek V4 Flash ⚡",     "desc": "高性价比，生成快"},
+    "deepseek-ai/DeepSeek-V4-Pro":     {"label": "DeepSeek V4 Pro",         "desc": "最新旗舰，质量最高"},
+    "deepseek-ai/DeepSeek-V3":         {"label": "DeepSeek V3",             "desc": "经典稳定版，中英文俱佳"},
+    "deepseek-ai/DeepSeek-V3.2":       {"label": "DeepSeek V3.2",           "desc": "V3 迭代，推理更强"},
+    "deepseek-ai/DeepSeek-R1":         {"label": "DeepSeek R1",             "desc": "深度推理，适合复杂分析"},
+    "Qwen/Qwen3.5-35B-A3B":            {"label": "Qwen 3.5 35B",            "desc": "阿里大杯，中文理解强"},
+    "Qwen/Qwen3.5-27B":                {"label": "Qwen 3.5 27B",            "desc": "阿里通义千问，中文优秀"},
+    "zai-org/GLM-5.3":                 {"label": "GLM-5.3",                 "desc": "智谱最新，中文优异"},
+    "zai-org/GLM-5.3-Flash":           {"label": "GLM-5.3 Flash ⚡",        "desc": "智谱轻量版，速度快"},
 }
 
 
-def _get_client(model: str = None) -> OpenAI:
-    """获取 OpenAI 客户端（按 model 缓存，支持切换不同模型）"""
+def _load_key(base_url_default, key_default):
+    """按 base url 运行时从环境重新读取（覆盖 import 时固化的问题）"""
+    if "siliconflow" in (base_url_default or "").lower():
+        return os.getenv("SILICONFLOW_API_KEY") or os.getenv("SF_API_KEY") or key_default
+    return os.getenv("LLM_API_KEY") or key_default
+
+
+def _get_client(model: str = None, api_key: str = None, api_base: str = None) -> OpenAI:
+    """获取 OpenAI 客户端（按 model 缓存，支持切换不同模型）。
+
+    自动按模型路由 provider：
+    - 模型名带硅基前缀（deepseek-ai/、Qwen/、zai-org/ 等）→ SiliconFlow
+    - 否则（deepseek-chat / deepseek-reasoner / 简短模型名）→ DeepSeek 官方
+    显式传入的 api_base / api_key 优先（来自 UI 输入）。
+    """
     global _client_cache
-    key = model or LLM_MODEL
-    if key not in _client_cache:
-        _client_cache[key] = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
-    return _client_cache[key]
+    model = model or LLM_MODEL
+
+    # 确定 base url
+    explicit_base = api_base and api_base.strip()
+    explicit_key = api_key and api_key.strip()
+
+    if explicit_base:
+        base_url = explicit_base
+        key = explicit_key or _load_key(base_url, LLM_API_KEY)
+    elif "/" in model:  # 硅基流动风格的模型全名 → 走硅基
+        base_url = SILICONFLOW_BASE_URL
+        key = (explicit_key
+               or os.getenv("SILICONFLOW_API_KEY")
+               or os.getenv("SF_API_KEY")
+               or SILICONFLOW_API_KEY
+               or os.getenv("LLM_API_KEY"))  # 兜底用官方 key，让 API 返回真实鉴权错误而非客户端崩溃
+    else:  # deepseek 官方短模型名
+        base_url = LLM_BASE_URL
+        key = explicit_key or os.getenv("LLM_API_KEY") or LLM_API_KEY
+
+    # OpenAI() 要求非空 key；为空时用一个占位，让 provider 返回 HTTP 4xx 而不是本地抛异常
+    if not key:
+        key = "missing-key-placeholder"
+    cache_key = f"{model}|{base_url}|{key}"
+    if cache_key not in _client_cache:
+        _client_cache[cache_key] = OpenAI(api_key=key, base_url=base_url)
+    return _client_cache[cache_key]
+
+
+def _parse_json_robust(content: str):
+    """尝试解析模型返回的 JSON。若整体失败（如被 max_tokens 截断），
+    尽力抢救已完整输出到的一半 sections。返回 dict 或 None。"""
+    if not content:
+        return None
+    # 常规解析
+    try:
+        return json.loads(content)
+    except Exception:
+        pass
+    # 抢救：模型常先输出 {"sections":{...}}，截断在尾部（notes 或不完整章节）。
+    # 尝试补全闭合括号，取出能解析的最长前缀。
+    candidates = []
+    # 去掉末尾可能的不完整片段，逐级减少长度尝试
+    trimmed = content.rstrip()
+    for cut in range(len(trimmed), 0, -1):
+        frag = trimmed[:cut]
+        # 只尝试以 } 结尾或 }," 结尾的片段
+        if not (frag.endswith("}") or frag.endswith("}}")):
+            continue
+        for closing in (frag + "}", frag + "]}"):
+            try:
+                obj = json.loads(closing)
+                if isinstance(obj, dict):
+                    return obj
+            except Exception:
+                continue
+    return None
 
 
 def detect_experiment_type(ocr_text: str) -> str:
@@ -49,15 +121,33 @@ def detect_experiment_type(ocr_text: str) -> str:
     ocr_lower = ocr_text.lower()
     scores = {}
     keywords = {
-        "物理实验": ["物理", "速度", "加速度", "力学", "电磁", "光学", "热学", "波动", "共振", "电阻", "电压", "电流", "电容", "电感"],
+        # 电路/电子 优先命中：数电、模电、信号与系统相关术语
+        "电路/电子实验": [
+            "电路", "电阻", "电压", "示波器", "万用表", "焊接", "波形", "频率",
+            "信号", "接线", "门电路", "真值表", "与非", "与非门", "逻辑", "引脚",
+            "74LS", "7400", "芯片", "集成", "运算放大器", "运放", "同相", "反相",
+            "电压增益", "反馈", "静态工作点", "输出", "卷积", "傅里叶", "变换",
+            "冲激响应", "线性时不变", "差分方程", "频谱",
+        ],
+        "物理实验": [
+            "物理", "速度", "加速度", "力学", "电磁", "波动", "共振", "驻波",
+            "波节", "波腹", "弦线", "声速", "张力", "波长", "温度",
+            "热学", "等效电阻", "伏安特性",
+        ],
         "化学实验": ["化学", "滴定", "溶液", "反应", "浓度", "沉淀", "pH", "mol", "mL", "试剂", "酸碱"],
-        "电路/电子实验": ["电路", "电阻", "电压", "示波器", "万用表", "焊接", "波形", "频率", "信号", "接线"],
         "力学实验": ["力学", "牛顿", "质量", "重力", "摩擦", "弹性", "转动", "力矩", "弹簧"],
-        "光学实验": ["光学", "透镜", "折射", "反射", "干涉", "衍射", "波长", "偏振", "光栅", "激光"],
+        "光学实验": ["光学", "透镜", "折射", "反射", "偏振", "光栅", "激光", "衍射", "干涉"],
         "计算机/编程实验": ["编程", "算法", "代码", "Python", "C++", "数据结构", "编译", "调试", "程序"],
     }
     for exp_type, kws in keywords.items():
         scores[exp_type] = sum(1 for kw in kws if kw in ocr_lower)
+    # 电路/电子 相对宽松命中时优先，且有逻辑/信号/运放等强信号词时加成
+    circ_score = scores["电路/电子实验"]
+    strong_circuit = any(k in ocr_lower for k in
+                         ["门电路", "真值表", "与非", "运算放大器", "运放", "卷积",
+                          "傅里叶", "冲激响应", "频谱", "电压增益"])
+    if strong_circuit:
+        scores["电路/电子实验"] = circ_score + 4
     best = max(scores, key=scores.get)
     return best if scores[best] > 0 else "物理实验"
 
@@ -68,6 +158,10 @@ def generate_report(
     template_summary: str,
     model: str = None,
     experiment_type: str = None,
+    api_key: str = None,
+    api_base: str = None,
+    requirement: str = "",
+    source_markdown: str = "",
 ) -> dict:
     """
     核心方法：根据 OCR 内容和模板结构，调用 AI 生成填入方案
@@ -78,6 +172,8 @@ def generate_report(
         template_summary: 模板结构摘要
         model: 指定模型（None 则用 config 默认）
         experiment_type: 实验类型（None 则自动检测）
+        api_key / api_base: 显式覆盖 provider（None 则自动按模型路由）
+        requirement: 用户在输入框里顺带写的额外要求（会并入提示词）
 
     返回:
         {
@@ -88,7 +184,7 @@ def generate_report(
         }
     """
     model = model or LLM_MODEL
-    client = _get_client(model)
+    client = _get_client(model, api_key=api_key, api_base=api_base)
 
     # 自动检测实验类型
     if experiment_type is None:
@@ -99,30 +195,57 @@ def generate_report(
     standard_sections = exp_info["sections"]
     type_requirements = exp_info["requirements"]
 
+    # 领域专项规范：数电/模电/信号与系统/大学物理 注入强写作模板（避免照抄指导书）
+    domain_codes = ["电路/电子实验", "物理实验"]
+    domain_spec_block = DOMAIN_SPEC if experiment_type in domain_codes else ""
+
     # 构建系统 prompt（含知识库规范）
-    system_prompt = f"""你是一个专业的工科实验报告撰写助手，服务于中国高校学生。
+    system_prompt = f"""你是一位中国高校工科本科生，正在写自己刚做完的实验的实验报告。
+不是"撰写助手"，不追求华丽的排比句，只把做过的事老老实实写清楚。
 
 ## 你的任务
 1. 根据实验指导手册的 OCR 识别内容，提取关键信息
 2. 将信息填入实验报告模板的对应位置
 3. 对内容进行适度润色，使其通顺专业，但**绝不编造数据**
-4. 去除重复内容，保持简洁
-5. 严格按高校学术规范组织语言
+4. **最重要：把指导书内容重构为一份"本次实验报告"，而不是照抄指导书**（见下方领域规范）
+5. 去除重复内容，保持简洁
+6. 语言要像一个学生自己写的：具体、朴实、长短句错落，**不要有 AI 腔**
 
 ## 本次实验类型：{experiment_type}
 标准章节：{' → '.join(standard_sections)}
 特殊要求：{type_requirements}
 
+{ANTI_AI_STYLE}
+
 ## 学术格式规范
 {POLISH_GUIDELINES}
+
+{("## 领域专项写作规范（本实验必须照做）\n" + domain_spec_block) if domain_spec_block else ""}
 
 **绝对禁止**：
 - 编造任何实验数据！只使用 OCR 文本中明确出现的数据
 - 如果某个章节在 OCR 文本中找不到对应内容，标记为 [待补充]
-- 不要用"我""我们"，用第三人称
-- 表格数据必须保持原始数值不变"""
+- 不要用"我""我们"，用第三人称（但句子要自然，不要靠"本文""笔者"堆砌）
+- 表格数据必须保持原始数值不变
+- **不要整段照抄指导书**：各栏必须收窄到本次实际用到的器件/电路/步骤
+- **不要出现上方"AI 腔"里列出的任何一个套话句式**"""
 
     # 构建 user prompt
+    _req = (requirement or "").strip()
+    _req_block = (
+        f"\n## 用户的额外要求（必须满足，优先级高于默认写法）\n{_req}\n"
+        if _req else ""
+    )
+
+    _md = (source_markdown or "").strip()
+    _md_block = (
+        "\n## 指导手册结构化原文（Markdown，已保留标题/列表/表格层级）\n"
+        "⚠️ 下面的【实验目的】【实验仪器】小节请**逐条原样照抄**，"
+        "不要改写、不要增删、不要重新概括。这是最权威的原文。\n"
+        f"{_md[:9000]}\n"
+        if _md else ""
+    )
+
     user_prompt = f"""## 实验类型
 {experiment_type}
 
@@ -131,25 +254,37 @@ def generate_report(
 
 ## 实验指导手册 OCR 识别内容
 {ocr_text[:8000]}
-
+{_md_block}
 ## 识别到的表格数据
 {chr(10).join(str(t) for t in ocr_tables) if ocr_tables else '（无表格数据）'}
+{_req_block}
+【模板章节对齐（硬性要求）】
+sections 的键**必须**取自上方"实验报告模板结构"里**实际出现**的章节名称，一个都不能多、一个都不能少。
+- 模板有"实验目的、实验仪器、实验原理、实验过程、实验小结" → 就只输出这 5 个键。
+- 模板有"实验步骤、实验数据、实验结果、实验结论" → 就只输出这 4 个键。
+- **绝对禁止**输出模板里没有的章节。特别注意：**不要自行添加"实验设计"、"思考题"、
+  "注意事项"、"误差分析"、"预习思考"这类章节**——除非模板结构里明确写了它们。
+  思考题/设计实验等内容如果模板没给位置，就写进"实验过程"的最后一段里，
+  而不是单独开一个新章节。
+- 判断依据只有模板结构，不要依据指导书的章节数。
 
-请按以下 JSON 格式返回填入内容（严格 JSON）：
+【表格数据格式】凡涉及实验数据（真值表、测量数据表、误差表等），请把数据写成 Markdown 表格
+嵌入对应章节的文本中，格式如下：
+| 输入A | 输入B | 输出电压/V | 输出逻辑 |
+| --- | --- | --- | --- |
+| 0 | 0 | 3.50 | 1 |
+| 0 | 1 | 5.04 | 1 |
+表格必须以"|"开头和结尾，第一行为表头，第二行为 ----- 分隔行。数据必须来自 OCR 识别内容，严禁编造。
+
+请按以下 JSON 格式返回填入内容（严格 JSON，不要输出 JSON 之外的文字）：
 {{
   "sections": {{
-    "实验名称": "",
     "实验目的": "",
+    "实验仪器": "",
     "实验原理": "",
-    "实验器材": "",
-    "实验步骤": "",
-    "实验数据": "",
-    "数据处理": "",
-    "实验结果": "",
-    "误差分析": "",
-    "实验结论": ""
+    "实验过程": "",
+    "实验小结": ""
   }},
-  "tables_fill": [],
   "notes": "补充说明（可空）"
 }}"""
 
@@ -160,7 +295,7 @@ def generate_report(
             {"role": "user", "content": user_prompt}
         ],
         "temperature": 0.3,
-        "max_tokens": 4096,
+        "max_tokens": 8192,
     }
 
     for attempt in range(MAX_RETRY):
@@ -168,18 +303,42 @@ def generate_report(
             response = client.chat.completions.create(**api_kwargs)
             content = response.choices[0].message.content
 
-            import json, re
             m = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', content, re.DOTALL)
             if m:
                 content = m.group(1).strip()
-            result = json.loads(content)
+            result = _parse_json_robust(content)
+            if result is None:
+                raise json.JSONDecodeError("无法解析", content, 0)
+
+            secs = result.get("sections", {})
+            # ── 文风自检：命中 AI 腔就带着具体修改建议重试一次 ──
+            audit = audit_sections(secs)
+            if audit and attempt < MAX_RETRY - 1:
+                print(f"[filler] 文风自检命中 {sum(len(v) for v in audit.values())} 处 AI 腔，"
+                      f"带着修改建议重试…")
+                _fix_lines = [f"- 删除/改写「{frag}」（{tag}）" for v in audit.values()
+                              for frag, tag, _h in v[:3]]
+                nudge = (
+                    "\n\n【上一版文风不合格，必须改写】\n"
+                    + "\n".join(_fix_lines)
+                    + "\n请重写这些句子，不要用套话，直接陈述具体事实与数据。"
+                )
+                api_kwargs["messages"][1]["content"] = user_prompt + nudge
+                time.sleep(0.5)
+                continue
+
+            notes = result.get("notes", "")
+            _audit_txt = format_audit(audit)
+            if _audit_txt:
+                notes = (notes + "\n" + _audit_txt).strip()
 
             return {
-                "sections": result.get("sections", {}),
+                "sections": secs,
                 "tables_fill": result.get("tables_fill", []),
-                "notes": result.get("notes", ""),
+                "notes": notes,
                 "model_used": model,
                 "experiment_type": experiment_type,
+                "ai_audit": audit,
                 "raw_response": content
             }
 
@@ -188,16 +347,100 @@ def generate_report(
             time.sleep(1)
         except Exception as e:
             print(f"[filler] API 调用异常: {e}，第 {attempt+1}/{MAX_RETRY} 次重试...")
+            last_error = str(e)
             time.sleep(2)
 
     return {
         "sections": {},
         "tables_fill": [],
-        "notes": "AI 填充失败，请检查 API 配置",
+        "notes": f"AI 填充失败：{last_error or '请检查 API 配置'}",
         "model_used": model,
         "experiment_type": experiment_type,
         "raw_response": ""
     }
+
+
+# ══════════ 文风自检：检测"AI 味"套话 ══════════
+# 生成后用正则扫一遍，把命中项写进 notes，并在重试时作为强约束回灌。
+_AI_TELLS = [
+    (r"通过本次实验[,，]?\s*[^。]{0,40}(加深|认识|理解)", "通过本次实验…加深了理解"),
+    (r"为后续[^。]{0,20}(奠定|打下)[^。]{0,10}基础", "为后续…奠定基础"),
+    (r"不仅[^。]{0,30}而且", "不仅…而且…"),
+    (r"综?上?所述|总而言之|值得注意的是|需要指出的是|总体而言|整体而言", "综上所述/值得注意的是"),
+    (r"充分(体现|说明|证明|反映)", "充分体现/证明"),
+    (r"有效地?(验证|提高|掌握|实现)", "有效验证/提高"),
+    (r"全面地?(掌握|理解|分析)", "全面掌握"),
+    (r"极大地|显著地?|深入地?", "极大地/显著地/深入地"),
+    (r"(掌握|熟悉|了解)[^。]{0,20}[，,]\s*(掌握|熟悉|了解)", "掌握…熟悉…了解…三连排比"),
+    (r"(→|—>|->)", "箭头串流程"),
+    (r"完整(的)?(流程|过程|链路)", "完整流程"),
+    (r"既[^。]{0,20}又", "既…又…"),
+    (r"具有一定(的)?(参考|指导|实用)(价值|意义)", "具有一定参考价值"),
+    (r"本次实验(以|围绕)[^。]{0,30}(为例|展开)", "本次实验以…为例"),
+]
+
+_AUTO_FIX_HINTS = {
+    "通过本次实验…加深了理解": "删掉整句，改为具体写出这次得到的结论或数据",
+    "为后续…奠定基础": "删掉整句",
+    "不仅…而且…": "拆成两句独立的陈述",
+    "综上所述/值得注意的是": "删掉该连接词，直接用内容承接",
+    "充分体现/证明": "删掉副词“充分”，或整句改为具体事实",
+    "有效验证/提高": "删掉“有效”，只留“验证”",
+    "全面掌握": "删掉“全面”",
+    "极大地/显著地/深入地": "删掉该副词",
+    "掌握…熟悉…了解…三连排比": "改成只写本次真正做到的一两件事，不要凑三项",
+    "箭头串流程": "把箭头串改写成完整句子，如“先…再…最后…”",
+    "完整流程": "删掉“完整流程”，直接说做了什么",
+    "既…又…": "拆成两句",
+    "具有一定参考价值": "删掉整句",
+    "本次实验以…为例": "改为直接陈述实验对象",
+}
+
+
+def detect_ai_tells(text: str) -> list:
+    """返回命中的 AI 腔套话列表 [(命中片段, 问题类型, 修改建议)]"""
+    hits = []
+    seen_tags = set()
+    t = text or ""
+    for pat, tag in _AI_TELLS:
+        # 同一类型只报一次（箭头串、三连排比这类会重复命中）
+        if tag in seen_tags:
+            continue
+        m = re.search(pat, t)
+        if m:
+            frag = m.group(0)
+            if len(frag) > 40:
+                frag = frag[:40] + "…"
+            hits.append((frag, tag, _AUTO_FIX_HINTS.get(tag, "")))
+            seen_tags.add(tag)
+            if len(hits) >= 12:
+                break
+    return hits
+
+
+def audit_sections(sections: dict) -> dict:
+    """逐章节检查 AI 味，返回 {章节: [(片段, 类型, 建议)]}"""
+    out = {}
+    for name, txt in (sections or {}).items():
+        if not txt or not txt.strip():
+            continue
+        hits = detect_ai_tells(txt)
+        if hits:
+            out[name] = hits
+    return out
+
+
+def format_audit(audit: dict) -> str:
+    """把自检结果格式化成可读的一段话（用于 notes / 日志）"""
+    if not audit:
+        return ""
+    total = sum(len(v) for v in audit.values())
+    lines = [f"文风自检：发现 {total} 处 AI 腔表述，建议人工替换"]
+    for name, hits in audit.items():
+        lines.append(f"· {name}：")
+        for frag, tag, hint in hits[:4]:
+            lines.append(f"    「{frag}」→ {tag}" + (f"（{hint}）" if hint else ""))
+    return "\n".join(lines)
 
 
 def compare_models(

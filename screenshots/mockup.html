@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=Silkscreen&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{--bg0:#e9e2d5;--bg1:#fbf7ef;--bg2:#e4d9c2;--line:#b9ab8f;--line2:#8f7d5e;--acc:#6f8f4e;--acc2:#b97a3d;--ink:#3c3a33;--dim:#7d735f;--deep:#433c2c;--soft:#fffdf7;--fade:linear-gradient(180deg,rgba(111,143,78,.10),rgba(185,122,61,.10));--pix:'Pixelify Sans','Silkscreen','SimSun','宋体',cursive,monospace;--term:'VT323','Courier New',monospace;--song:'SimSun','宋体',sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg0);font-family:var(--song);color:var(--ink);padding:22px;background-image:radial-gradient(circle at 18% 12%,var(--fade),transparent 42%),radial-gradient(circle at 82% 86%,var(--fade),transparent 45%)}
+body::before{content:"";position:fixed;inset:0;z-index:-1;background-image:linear-gradient(45deg,rgba(0,0,0,.015) 25%,transparent 25%,transparent 75%,rgba(0,0,0,.015) 75%),linear-gradient(45deg,rgba(0,0,0,.015) 25%,transparent 25%,transparent 75%,rgba(0,0,0,.015) 75%);background-size:6px 6px;background-position:0 0,3px 3px}
+.wrap{max-width:980px;margin:0 auto}
+.pix-header{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--bg1);border:3px solid var(--deep);box-shadow:inset 0 0 0 2px var(--line),0 6px 0 0 var(--line);padding:18px 22px;margin:0 0 18px}
+.hd-left{flex:1}
+.pix-header h1{font-family:var(--pix);font-size:19px;color:var(--acc);margin:0 0 8px}
+.pix-header .sub{font-family:var(--term);font-size:17px;color:var(--dim);margin:0}
+.pix-header .pix-dot{color:var(--acc2)}
+.theme-toggle{font-family:var(--pix);font-size:15px;background:var(--acc);color:#fff;border:3px solid var(--deep);border-radius:2px;box-shadow:3px 3px 0 0 var(--line2);padding:10px 12px;white-space:nowrap}
+@keyframes blink{50%{opacity:0}}
+.pix-caret{animation:blink 1.1s step-end infinite;color:var(--acc)}
+.sec-tag{font-family:var(--pix);font-size:12px;color:#fff;background:var(--acc);display:inline-block;padding:5px 9px;margin:6px 0 10px;box-shadow:3px 3px 0 0 var(--line2);letter-spacing:.5px}
+.sec-tag.purple{background:var(--acc2)}
+.row{display:flex;gap:14px}
+.col{flex:1}
+.box{background:var(--bg1);border:1px solid var(--line);border-radius:2px;box-shadow:inset 0 0 0 1px var(--bg0);padding:12px;margin-bottom:14px}
+.box h6{font-family:var(--pix);font-size:13px;color:var(--acc2);margin:0 0 8px;letter-spacing:.5px}
+.up{border:2px dashed var(--line2);background:var(--soft);border-radius:2px;padding:12px 12px;text-align:center;font-family:var(--term);font-size:13px;color:var(--dim)}
+.up b{color:var(--ink);font-family:var(--song)}
+.ck{font-size:14px;color:var(--ink);margin-top:10px}
+.btn{font-family:var(--pix);font-size:12px;letter-spacing:1px;color:#fff;background:var(--acc);border:3px solid var(--deep);border-radius:2px;box-shadow:4px 4px 0 0 var(--line),inset 0 -2px 0 0 rgba(0,0,0,.15);padding:14px 18px;width:100%;text-align:center;text-transform:uppercase;margin:4px 0 14px}
+hr{border:none;border-top:1px solid var(--line);opacity:.6;margin:10px 0}
+.statusbar{border-top:2px solid var(--line);padding-top:10px;font-family:var(--term);font-size:14px;color:var(--dim)}
+.ph{background:var(--soft);border:1px solid var(--line);padding:10px;font-family:var(--term);color:var(--dim)}
+.hist{border:1px solid var(--line);background:var(--bg1);padding:10px 12px;margin-bottom:8px;border-left:4px solid var(--acc)}
+.hist .t{font-size:15px;color:var(--ink)}
+.hist .m{font-size:13px;color:var(--dim);font-family:var(--term)}
+.hist a{color:var(--acc);text-decoration:none;font-weight:600}
+.acc{border:1px solid var(--line);border-radius:2px;background:var(--bg1);font-family:var(--pix);font-size:12px;color:var(--ink);padding:11px 13px;margin-bottom:8px;letter-spacing:.5px}
+.acc small{font-family:var(--term);font-size:13px;color:var(--dim);letter-spacing:0}
+.mdown{font-size:14px;line-height:1.7}
+.mdown h3{font-family:var(--pix);font-size:13px;color:var(--acc2)}
+.mdown table{border-collapse:collapse;width:100%;margin:8px 0}
+.mdown th,.mdown td{border:1px solid var(--line);padding:6px 10px;font-size:13px}
+.mdown th{background:var(--bg2);color:var(--acc);font-family:var(--pix);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="pix-header">
+    <div class="hd-left"><h1>▣ 无痛实验报告生成器 <span class="pix-caret">▊</span></h1>
+    <p class="sub">> PIXEL LAB REPORT GENERATOR <span class="pix-dot">·</span> OCR + AI → 一键成稿 <span class="pix-dot">·</span> v2.0</p></div>
+    <span class="theme-toggle">☾ 暗</span>
+  </div>
+
+  <span class="sec-tag">STEP 01 ▸ 上传资料</span>
+  <div class="row">
+    <div class="col box"><h6>INPUT 01 · 实验指导手册（可多选）</h6><div class="up"><b>PDF / Word / 图片 / MD / 文本</b><br>点击或拖拽上传</div></div>
+    <div class="col box"><h6>INPUT 02 · 老师模板（可选，可多选）</h6><div class="up"><b>.docx / .doc / .pdf / .md</b><br>点击或拖拽上传</div><div class="ck">[x] 无模板 → 使用内置线框模板</div></div>
+  </div>
+
+  <span class="sec-tag purple">STEP 02 ▸ 引擎</span>
+  <div class="box"><h6>⚙ AI 模型 &amp; API</h6><div class="up" style="text-align:left;font-size:14px"><b>AI 模型</b> &nbsp; [ deepseek-chat（V3 对话） ▾ ]</div></div>
+
+  <span class="sec-tag">STEP 03 ▸ 生成</span>
+  <div class="btn">▶ RUN · 一键生成报告</div>
+
+  <hr>
+  <div class="row">
+    <div class="col box"><h6>OUTPUT · 下载</h6><div class="btn" style="margin:0">⬇ 下载最新报告 (.docx)</div><div class="statusbar">> 生成后自动显示下载按钮</div></div>
+    <div class="col box"><h6>OUTPUT · 预览</h6><div class="ph">> 等待生成…<span class="pix-caret">▊</span></div><div class="statusbar">> LOG：等待任务</div></div>
+  </div>
+
+  <div class="acc">🔍 处理日志 / LOG <small>（折叠）</small></div>
+  <div class="acc">📚 历史生成记录（可重复下载，不耗 Token）<small>（展开）</small></div>
+  <div class="hist"><div class="t">电子技术基础实验_实验报告.docx</div><div class="m">deepseek-chat · 2026-10-23 · <a>⬇ 下载</a></div></div>
+
+  <hr>
+  <div class="mdown">
+    <h3>▸ 快速上手</h3>
+    <table><tr><th>步骤</th><th>操作</th></tr><tr><td>①</td><td>上传实验指导手册（PDF / 照片 / MD，可多选）</td></tr><tr><td>②</td><td>上传老师模板 .docx / .pdf（或勾选内置模板）</td></tr><tr><td>③</td><td>选择 AI 模型</td></tr><tr><td>④</td><td>点击一键生成，下载 .docx 微调</td></tr></table>
+  </div>
+</div>
+</body>
+</html>

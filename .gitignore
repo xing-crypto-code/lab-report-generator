@@ -22,6 +22,18 @@ temp/*
 !outputs/.gitkeep
 !temp/.gitkeep
 
+# 依赖包（本机 pip 装到 libs/ 的第三方库，1.4GB，绝不入库）
+libs/
+
+# 模板备份（rebake 自动生成，含旧版模板）
+templates/*.bak
+
+# 渲染/调试产物
+screenshots/dom.txt
+
+# 外部工具（DSH 沙箱）的体检产物，与本项目无关
+acl-recovery/
+
 # IDE
 .vscode/
 .idea/

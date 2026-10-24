@@ -35,11 +35,11 @@ def analyze_template(file_path: str) -> dict:
 
     # 已知的实验报告常见章节标题
     KNOWN_SECTIONS = [
-        "实验名称", "实验目的", "实验原理", "实验器材", "实验仪器",
-        "实验设备", "实验步骤", "实验内容", "实验数据", "数据记录",
-        "数据处理", "实验结果", "实验分析", "误差分析", "实验结论",
+        "实验名称", "课程名称", "实验目的", "实验原理", "实验器材", "实验仪器",
+        "实验设备", "实验步骤", "实验内容", "实验过程", "实验数据", "数据记录",
+        "数据处理", "实验结果", "实验分析", "误差分析", "实验结论", "实验小结",
         "思考题", "讨论", "心得体会", "注意事项", "实验日期",
-        "姓名", "学号", "班级", "同组人员", "指导教师"
+        "姓名", "学号", "班级", "同组人员", "指导教师", "教师评阅"
     ]
 
     # ------ 解析段落 ------
@@ -72,6 +72,7 @@ def analyze_template(file_path: str) -> dict:
         cols = len(table.columns)
         headers = []
         body_rows = []
+        row_labels = []  # 每行首个单元格若像章节名则记录
 
         for j, row in enumerate(table.rows):
             cells = [cell.text.strip() for cell in row.cells]
@@ -79,6 +80,14 @@ def analyze_template(file_path: str) -> dict:
                 headers = cells
             else:
                 body_rows.append(cells)
+            # 检测表格首列/首格的章节标签（如"实验目的"、"课程名称"）
+            first = cells[0] if cells else ""
+            if first and len(first) <= 22 and first not in row_labels:
+                is_label = any(s in first for s in KNOWN_SECTIONS)
+                if is_label:
+                    row_labels.append(first)
+                    if first not in sections:
+                        sections.append(first)
 
         table_info = {
             "index": i,
@@ -86,6 +95,7 @@ def analyze_template(file_path: str) -> dict:
             "cols": cols,
             "headers": headers,
             "body": body_rows,
+            "row_labels": row_labels,
             "placeholder_cells": sum(
                 1 for row in table.rows for cell in row.cells
                 if "___" in cell.text or "______" in cell.text or cell.text.strip() == ""
@@ -127,9 +137,12 @@ def get_template_summary(analysis: dict) -> str:
             lines.append(f"{marker} [{p['style']}] {p['text'][:80]}{'...' if len(p['text'])>80 else ''}")
 
     lines.append("")
-    lines.append("### 表格列表")
+    lines.append("### 表格列表（每行首列章节名 → 对应填写区）")
     for t in analysis["tables"]:
         lines.append(f"- 表格 {t['index']+1}: {t['rows']}行×{t['cols']}列, 表头={t['headers']}")
+        if t.get("row_labels"):
+            lines.append(f"  章节行: {'、'.join(t['row_labels'])}")
+            lines.append("  → 生成 sections 时请使用这些章节名作为键")
 
     return "\n".join(lines)
 

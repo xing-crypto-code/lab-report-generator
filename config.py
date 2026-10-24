@@ -30,6 +30,10 @@ LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
 LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-chat")
 
+# ---- 硅基流动 SiliconFlow（备用 provider，模型带 deepseek-ai/、Qwen/、zai-org/ 前缀时自动路由）----
+SILICONFLOW_API_KEY = os.getenv("SILICONFLOW_API_KEY", os.getenv("SF_API_KEY", ""))
+SILICONFLOW_BASE_URL = os.getenv("SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/v1")
+
 # ---- OCR 配置 ----
 # EasyOCR: ch_sim=简体中文, en=英文
 OCR_LANG = os.getenv("OCR_LANG", "ch")

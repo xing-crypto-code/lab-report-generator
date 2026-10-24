@@ -53,15 +53,36 @@ def _get_reader():
     return _reader
 
 
+def parse_pdf_markdown(file_path: str) -> str:
+    """用 pymupdf4llm 把 PDF 转成结构化 Markdown（标题/列表/表格都保留）。
+
+    这是比裸文本 OCR 精确得多的抽取方式：它保留版面层级，标题会变成 `#`，
+    列表会保留 `1.` `-` 编号，表格转成 Markdown 表格。让 AI 能分清
+    「实验目的」「实验仪器」这类小节的边界，从而原样照抄而不是重新编。
+    失败时返回空串，调用方回退到原来的 parse_pdf。
+    """
+    try:
+        import pymupdf4llm
+        md = pymupdf4llm.to_markdown(file_path)
+        return md or ""
+    except Exception as e:
+        print(f"[parser] pymupdf4llm 提取失败，回退裸文本: {e}")
+        return ""
+
+
 def parse_pdf(file_path: str) -> dict:
     """
     解析 PDF 文件，返回：
     {
         "text": "整段文字内容",
+        "markdown": "结构化 Markdown（供精确抽取小节用）",
         "tables": [["表头", "列2"], ["数据1", "数据2"]],
         "page_count": 页数
     }
     """
+    # ── 先尝试结构化 Markdown 抽取（电子版 PDF 效果最好）──
+    markdown = parse_pdf_markdown(file_path)
+
     doc = fitz.open(file_path)
     full_text = []
     all_tables = []
@@ -75,25 +96,27 @@ def parse_pdf(file_path: str) -> dict:
         if text.strip():
             full_text.append(f"--- 第 {page_num+1} 页 ---\n{text}")
 
-        # 2. 提取图片 → OCR 识别（处理扫描版 PDF / 照片）
-        images = page.get_images(full=True)
-        for img_index, img in enumerate(images):
-            xref = img[0]
-            base_image = doc.extract_image(xref)
-            image_bytes = base_image["image"]
-            pil_image = Image.open(io.BytesIO(image_bytes))
+        # 2. 电子版没文字（扫描件）才走 OCR，避免重复且慢
+        if not text.strip():
+            images = page.get_images(full=True)
+            for img_index, img in enumerate(images):
+                xref = img[0]
+                base_image = doc.extract_image(xref)
+                image_bytes = base_image["image"]
+                pil_image = Image.open(io.BytesIO(image_bytes))
 
-            ocr_result = ocr_image(pil_image)
-            if ocr_result["text"]:
-                full_text.append(
-                    f"--- 第 {page_num+1} 页 · 图片 {img_index+1} ---\n"
-                    f"{ocr_result['text']}"
-                )
-            all_tables.extend(ocr_result["tables"])
+                ocr_result = ocr_image(pil_image)
+                if ocr_result["text"]:
+                    full_text.append(
+                        f"--- 第 {page_num+1} 页 · 图片 {img_index+1} ---\n"
+                        f"{ocr_result['text']}"
+                    )
+                all_tables.extend(ocr_result["tables"])
 
     doc.close()
     return {
         "text": "\n".join(full_text),
+        "markdown": markdown,
         "tables": all_tables,
         "page_count": page_count
     }
@@ -179,6 +202,70 @@ def parse_docx(file_path: str) -> dict:
     }
 
 
+def parse_markdown(file_path: str) -> dict:
+    """
+    解析 .md / .txt / .markdown 纯文本&Markdown 实验指导手册。
+    Markdown 里的表格（| a | b |）会被提取为结构化表格。
+    """
+    try:
+        text = Path(file_path).read_text(encoding="utf-8", errors="ignore")
+    except Exception:
+        text = Path(file_path).read_text(encoding="gbk", errors="ignore")
+
+    lines = text.splitlines()
+    clean_lines = []
+    all_tables = []
+    cur_table = []
+    in_table = False
+
+    def flush_table():
+        nonlocal cur_table
+        # 过滤纯分隔行 |---|
+        rows = [r for r in cur_table if not _is_md_sep(r)]
+        if rows:
+            all_tables.append(
+                [[c.strip() for c in r.strip(" |").split("|")] for r in rows]
+            )
+        cur_table = []
+
+    for ln in lines:
+        stripped = ln.strip()
+        if _is_md_sep(stripped):
+            continue
+        if stripped.startswith("|") and stripped.endswith("|"):
+            if not in_table:
+                in_table = True
+                cur_table = []
+            cur_table.append(stripped)
+            clean_lines.append(stripped)
+        else:
+            if in_table:
+                flush_table()
+                in_table = False
+            if stripped and not stripped.lstrip().startswith((
+                    "#", "```", ">", "-", "*", "|", "<!--")):
+                clean_lines.append(stripped)
+    if in_table:
+        flush_table()
+
+    return {
+        "text": "\n".join(clean_lines),
+        "tables": all_tables,
+        "page_count": None
+    }
+
+
+def _is_md_sep(s: str) -> bool:
+    """判断是否 Markdown 表格分隔行（| --- | :---: | --- |）"""
+    if not (s.strip().startswith("|") and s.strip().endswith("|")):
+        return False
+    cells = [c.strip() for c in s.strip().strip("|").split("|")]
+    if not cells:
+        return False
+    # 所有单元格都只能由 -、:、空白组成，且至少含一个 -
+    return all(c != "" and all(ch in "-:" + " " for ch in c) and "-" in c for c in cells)
+
+
 def parse_document(file_path: str) -> dict:
     """统一入口：自动判断格式，返回统一结构"""
     ext = Path(file_path).suffix.lower()
@@ -186,6 +273,8 @@ def parse_document(file_path: str) -> dict:
         return parse_pdf(file_path)
     elif ext in {".docx", ".doc"}:
         return parse_docx(file_path)
+    elif ext in {".md", ".markdown", ".txt"}:
+        return parse_markdown(file_path)
     elif ext in {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"}:
         return parse_image(file_path)
     else:
