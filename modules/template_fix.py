@@ -240,15 +240,23 @@ def fix_06_unify_table_positioning(doc):
                     idx += span
             changed += 1
 
-        # ── 定位统一：锚点=版心(margin)、无居中/右对齐、tblpX=0 ──
+        # ── 定位统一：强制重建 tblpPr（清掉 tblpX/tblpXSpec 残留）──
+        # 保留原 tblpY（决定表格上下位置），只把水平定位钉死到版心左边缘。
+        old_y = None
         tblpPr = tblPr.find(_qn('w:tblpPr'))
         if tblpPr is not None:
-            tblpPr.set(_qn('w:horzAnchor'), 'margin')
-            for attr in ('w:tblpX', 'w:tblpXSpec'):
-                if tblpPr.get(_qn(attr)) is not None:
-                    del tblpPr.attrib[_qn(attr)]
-                    changed += 1
-            tblpPr.set(_qn('w:tblpX'), '0')
+            old_y = tblpPr.get(_qn('w:tblpY'))
+            tblPr.remove(tblpPr)
+        tblpPr = tblPr.makeelement(_qn('w:tblpPr'), {})
+        kids = list(tblPr)
+        idx = 1 if kids and kids[0].tag == _qn('w:tblStyle') else 0
+        tblPr.insert(idx, tblpPr)
+        tblpPr.set(_qn('w:vertAnchor'), 'text')
+        tblpPr.set(_qn('w:horzAnchor'), 'margin')
+        tblpPr.set(_qn('w:tblpX'), '0')
+        if old_y is not None:
+            tblpPr.set(_qn('w:tblpY'), old_y)
+        changed += 1
         for tag in ('w:jc', 'w:tblInd'):
             for el in tblPr.findall(_qn(tag)):
                 tblPr.remove(el)

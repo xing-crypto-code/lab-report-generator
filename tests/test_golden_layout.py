@@ -266,6 +266,64 @@ def main():
         if out and os.path.exists(out):
             os.remove(out)
 
+    print('\n== 9. 思考题编号连续 + 无重复短语 ==')
+    from modules.generator import _iter_render_items
+    _q = ('四、思考题\n'
+          '1. 组合逻辑与时序逻辑的根本区别？\n答：无记忆性。\n'
+          '1. 竞争冒险如何消除？\n答：加滤波电容。\n'
+          '1. 为何进位 C 用两级与非门？\n答：(AB)′′。')
+    _qi = _iter_render_items(_q)
+    _nums = [i["text"].split(".")[0] for i in _qi
+             if i["kind"] == "list" and i["text"].rstrip().endswith(("？", "?"))]
+    check(f'思考题题目编号连续 1,2,3（实际{_nums}）', _nums == ['1', '2', '3'])
+    check('答：行未被误加编号',
+          all(not (i["kind"] == "list" and i["text"].startswith("答")) for i in _qi))
+    _dup = _iter_render_items('逻辑电路图 2逻辑电路图 2')
+    check('重复短语已清理',
+          not any('逻辑电路图 2逻辑电路图 2' in (i.get('text') or '') for i in _dup))
+
+    print('\n== 10. 带 tblpX 残留的"脏模板"也严格对齐 ==')
+    _out3 = None
+    _tmp3 = os.path.join(ROOT, 'temp', '_dirty_tpl.docx')
+    try:
+        _d3 = Document(TEMPLATE)
+        for _t3 in _d3.tables:
+            _pr = _t3._tbl.tblPr
+            _tp = _pr.find(qn('w:tblpPr'))
+            if _tp is not None:
+                _tp.set(qn('w:tblpX'), '-30')          # 故意注入偏移
+                _tp.set(qn('w:tblpXSpec'), 'center')   # 故意注入居中
+            _g3 = _t3._tbl.find(qn('w:tblGrid'))
+            _cols3 = _g3.findall(qn('w:gridCol'))
+            _cols3[0].set(qn('w:w'), str(max(1, int(_cols3[0].get(qn('w:w')))) - 14))
+        _d3.save(_tmp3)
+        _out3 = fill_template(_tmp3, {'sections': {
+            '实验目的': '1. 测试。', '实验仪器': '1. 测试。',
+            '实验原理': '1. 测试。', '实验过程': '一、实验步骤\n1. 测试。',
+            '实验小结': '测试。'}, 'tables_fill': []}, '_dirty_check')
+        _d4 = Document(_out3)
+        _sec4 = _d4.sections[0]
+        _pl4 = int(_sec4.left_margin / 635)
+        _bw4 = int((_sec4.page_width - _sec4.left_margin - _sec4.right_margin) / 635)
+        _l4, _r4 = set(), set()
+        for _t4 in _d4.tables:
+            _pr4 = _t4._tbl.tblPr
+            _g4 = _t4._tbl.find(qn('w:tblGrid'))
+            _tot4 = sum(int(x.get(qn('w:w')) or 0) for x in _g4.findall(qn('w:gridCol')))
+            _tp4 = _pr4.find(qn('w:tblpPr'))
+            _px4 = int(_tp4.get(qn('w:tblpX')) or 0) if _tp4 is not None else 0
+            check(f'  tblpX 归零（实际 {_px4}）', _px4 == 0)
+            check('  tblpXSpec 已清除',
+                  _tp4 is None or _tp4.get(qn('w:tblpXSpec')) is None)
+            _l4.add(_pl4 + _px4)
+            _r4.add(_pl4 + _px4 + _tot4)
+        check(f'脏模板也两表左对齐 {sorted(_l4)}', _l4 == {_pl4})
+        check(f'脏模板也两表右对齐 {sorted(_r4)}', _r4 == {_pl4 + _bw4})
+    finally:
+        for _f in (_out3, _tmp3):
+            if _f and os.path.exists(_f):
+                os.remove(_f)
+
     print('\n' + '=' * 52)
     if _fail:
         print(f'✗ {len(_fail)} 项偏离黄金标准:')

@@ -9,6 +9,7 @@ import fitz  # PyMuPDF
 from PIL import Image
 from docx import Document
 import io
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -36,11 +37,44 @@ if OCR_USE_GPU and not _CUDA_OK:
 
 # EasyOCR 延迟加载（首次调用时初始化，避免启动卡顿）
 _reader = None
+_reader_error = None
+
+
+def ocr_models_ready() -> bool:
+    """检查 EasyOCR 模型文件是否已下载到本地。
+
+    EasyOCR 首次使用时会去 GitHub 下载模型；国内网络下常被阻断，
+    表现是**无限等待**（用户看到界面一直转圈）。提前检查可快速失败。
+    """
+    model_dir = os.path.expanduser('~/.EasyOCR/model')
+    need = ['craft_mlt_25k.pth']
+    if OCR_LANG == "ch":
+        need.append('zh_sim_g2.pth')
+    missing = [f for f in need if not os.path.exists(os.path.join(model_dir, f))]
+    if missing:
+        return False
+    return True
+
 
 def _get_reader():
-    """单例模式获取 EasyOCR Reader 实例"""
-    global _reader
-    if _reader is None:
+    """单例模式获取 EasyOCR Reader 实例。
+
+    模型未就绪时**直接抛错**而不是挂起等下载——否则整个生成流程会卡死。
+    """
+    global _reader, _reader_error
+    if _reader is not None:
+        return _reader
+    if _reader_error is not None:
+        raise RuntimeError(_reader_error)
+
+    if not ocr_models_ready():
+        _reader_error = (
+            "OCR 模型尚未下载完成（首次使用需下载识别模型）。\n"
+            "本机无法直连 GitHub，请让程序自动走镜像下载，或改用 PDF/Word 格式的指导书。"
+        )
+        raise RuntimeError(_reader_error)
+
+    try:
         import easyocr
         # EasyOCR 语言代码: ch_sim=简体中文, en=英文
         lang_list = ["ch_sim", "en"] if OCR_LANG == "ch" else ["en"]
@@ -48,8 +82,12 @@ def _get_reader():
         _reader = easyocr.Reader(
             lang_list=lang_list,
             gpu=use_gpu,
-            verbose=False
+            verbose=False,
+            download_enabled=False,   # 禁止运行时下载，避免卡死
         )
+    except Exception as e:
+        _reader_error = f"OCR 初始化失败：{e}"
+        raise RuntimeError(_reader_error)
     return _reader
 
 
@@ -122,12 +160,58 @@ def parse_pdf(file_path: str) -> dict:
     }
 
 
+# OCR 保护参数：CPU 版 torch 下 EasyOCR 很慢（单张高清图可达数分钟），
+# 这里限制输入尺寸并设硬超时，避免整个生成流程被一张图拖死。
+_OCR_MAX_SIDE = 1600      # 长边超过此值先等比缩小（OCR 精度基本无损，速度提升数倍）
+_OCR_TIMEOUT = 90         # 单张图 OCR 硬超时（秒）
+
+
+def _shrink_for_ocr(image: Image.Image) -> Image.Image:
+    """把长边过大的图等比缩小，避免 OCR 在超大图上耗时爆炸。"""
+    try:
+        w, h = image.size
+        longest = max(w, h)
+        if longest > _OCR_MAX_SIDE:
+            scale = _OCR_MAX_SIDE / float(longest)
+            new_size = (max(1, int(w * scale)), max(1, int(h * scale)))
+            return image.resize(new_size, Image.LANCZOS)
+    except Exception:
+        pass
+    return image
+
+
+def _ocr_with_timeout(reader, img_bgr, timeout=_OCR_TIMEOUT):
+    """在独立线程里跑 OCR，超时则放弃该图（返回空结果而非卡死整个流程）。"""
+    import threading
+    box = {}
+
+    def _work():
+        try:
+            box['result'] = reader.readtext(img_bgr, detail=1)
+        except Exception as e:
+            box['error'] = e
+
+    th = threading.Thread(target=_work, daemon=True)
+    th.start()
+    th.join(timeout)
+    if th.is_alive():
+        print(f"[parser] OCR 超时（>{timeout}s），跳过该图")
+        return []
+    if 'error' in box:
+        print(f"[parser] OCR 出错：{box['error']}")
+        return []
+    return box.get('result', [])
+
+
 def ocr_image(image: Image.Image) -> dict:
     """
     对单张图片做 OCR 识别（含图像预处理增强）
     返回 { "text": "识别文字", "tables": [表格列表] }
     """
     import numpy as np
+
+    # ── 先缩小超大图，防止 CPU 版 OCR 耗时爆炸 ──
+    image = _shrink_for_ocr(image)
 
     # ── 预处理 ──
     processed = preprocess_for_ocr(image)
@@ -137,7 +221,7 @@ def ocr_image(image: Image.Image) -> dict:
     img_bgr = img_array[:, :, ::-1].copy()
 
     reader = _get_reader()
-    results = reader.readtext(img_bgr, detail=1)
+    results = _ocr_with_timeout(reader, img_bgr)
 
     texts = []
     tables = []
@@ -145,7 +229,7 @@ def ocr_image(image: Image.Image) -> dict:
     for item in results:
         bbox, text, confidence = item
         if confidence > 0.3:
-            texts.append(text)
+            texts.append(_fix_ocr_typos(text))
 
     return {
         "text": "\n".join(texts),
@@ -153,10 +237,40 @@ def ocr_image(image: Image.Image) -> dict:
     }
 
 
+# 中文 OCR 常见的固定误识（字形相近），做一次确定性纠正。
+# 只纠正**无歧义**的高频错字，不动可能合法的内容。
+_OCR_TYPO_MAP = [
+    ('熟恶', '熟悉'), ('熟悉', '熟悉'),
+    ('夹验', '实验'), ('实脸', '实验'), ('实骏', '实验'),
+    ('与非门', '与非门'),
+    ('74L500', '74LS00'), ('74LSO0', '74LS00'), ('74LS0O', '74LS00'),
+    ('74LS0', '74LS0'), ('74L520', '74LS20'), ('74L532', '74LS32'),
+    ('74L502', '74LS02'), ('74L586', '74LS86'),
+    ('数模电', '数模电'),
+]
+
+
+def _fix_ocr_typos(text: str) -> str:
+    """纠正 OCR 高频误识的固定字串。"""
+    s = text or ""
+    for bad, good in _OCR_TYPO_MAP:
+        if bad != good and bad in s:
+            s = s.replace(bad, good)
+    # 逻辑表达式里的常见符号误识：A:B -> A·B
+    s = s.replace('(A:B)', '(A·B)')
+    return s
+
+
 def parse_image(file_path: str) -> dict:
     """解析单张图片文件（照片/截图）"""
     image = Image.open(file_path)
-    return ocr_image(image)
+    try:
+        return ocr_image(image)
+    except RuntimeError as e:
+        raise ValueError(
+            f"{e}\n"
+            "👉 建议：把指导书另存为 PDF 或 Word 上传，这两类格式不需要 OCR、秒出结果。"
+        )
 
 
 def parse_docx(file_path: str) -> dict:

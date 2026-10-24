@@ -144,8 +144,15 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
         merged_text_parts = []
         merged_md_parts = []
         merged_tables = []
-        for mf in manuals:
+        for idx, mf in enumerate(manuals, 1):
             name = Path(mf).stem
+            ext = Path(mf).suffix.lower()
+            _is_img = ext in ('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp')
+            if _is_img:
+                status.append(f"   🖼️ [{idx}/{len(manuals)}] 《{Path(mf).name}》 OCR 识别中…"
+                              f"（CPU 模式较慢，单张最多 90 秒）")
+            else:
+                status.append(f"   📄 [{idx}/{len(manuals)}] 《{Path(mf).name}》 解析中…")
             try:
                 doc_result = parse_document(mf)
             except ValueError as e:

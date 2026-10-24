@@ -101,6 +101,81 @@ def _normalize_numbering(items):
     return out
 
 
+def _renumber_questions(items):
+    """思考题「题目行」编号连续：实证样本里每条题目都写成 `1.`，这是错的。
+
+    识别模式：`N. xxx？`（以问号结尾的编号行）后面紧跟 `答：...`。
+    把这类「编号+问号」行统一按出现顺序重排为 1. 2. 3. …，
+    而 `答：` 行保持原样（不加编号）。
+    """
+    # 找出所有「以问号结尾的带编号行」
+    idxs = []
+    for i, it in enumerate(items):
+        if it["kind"] != "list":
+            continue
+        t = (it.get("text") or "").strip()
+        body = _strip_num_prefix(t)
+        if body.endswith(("？", "?")):
+            idxs.append(i)
+    if len(idxs) < 2:
+        return items
+    n = 0
+    out = list(items)
+    for i in idxs:
+        n += 1
+        body = _strip_num_prefix(out[i]["text"])
+        out[i] = {"kind": "list", "text": f"{n}. {body}"}
+    return out
+
+
+def _drop_duplicate_headings(items):
+    """去掉连续/近邻重复的标题（实证样本里出现过「逻辑电路图 2逻辑电路图 2」）。"""
+    out = []
+    seen_recent = []
+    for it in items:
+        if it["kind"] == "heading":
+            txt = (it.get("text") or "").strip()
+            if txt in seen_recent:
+                continue          # 重复标题，丢弃
+            seen_recent.append(txt)
+            if len(seen_recent) > 8:
+                seen_recent.pop(0)
+        # 标题完全相同的「同一行重复两遍」也要拆开
+        elif it["kind"] in ("para", "list"):
+            pass
+        out.append(it)
+    return out
+
+
+def _dedupe_repeated_phrase(items):
+    """清理「逻辑电路图 2逻辑电路图 2」这类同一短句在一行内重复两遍的残留。"""
+    import re as _r
+    out = []
+    for it in items:
+        if "text" not in it:
+            out.append(it)
+            continue
+        t = (it.get("text") or "").strip()
+        new = t
+        # 情形1：前半 == 后半（允许中间空格/数字差异极小），如
+        #   "逻辑电路图 2逻辑电路图 2"
+        n = len(t)
+        if n >= 8:
+            for cut in range(4, n // 2 + 1):
+                a, b = t[:cut].strip(), t[cut:].strip()
+                # 去掉两边标点/空白后比较
+                an = _r.sub(r"[\s\W_]+", "", a)
+                bn = _r.sub(r"[\s\W_]+", "", b)
+                if an and an == bn:
+                    new = a
+                    break
+        if new != t:
+            it = dict(it)
+            it["text"] = new
+        out.append(it)
+    return out
+
+
 def _strip_num_prefix(text):
     """去掉行首的任意编号前缀（1. / 2、/ （3） / ④ / a.），返回正文"""
     s = (text or "").strip()
@@ -167,7 +242,8 @@ def _autonumber_paragraphs(items):
     def _is_explanatory(t):
         s = (t or "").strip()
         for lead in ("数据处理", "说明", "注：", "注:", "其中", "注意", "提示",
-                     "小结", "综上所述", "因此", "所以"):
+                     "小结", "综上所述", "因此", "所以", "答：", "答:", "解：",
+                     "解:", "分析：", "分析:"):
             if s.startswith(lead):
                 return True
         # 以冒号结尾的是「前言句」（如"74LS00 与非门（Y=(A·B)′）："），
@@ -234,7 +310,12 @@ def _iter_render_items(content):
                 items.append({"kind": "list", "text": s})
             else:
                 items.append({"kind": "para", "text": s})
-    return _normalize_numbering(_autonumber_paragraphs(items))
+    items = _autonumber_paragraphs(items)
+    items = _normalize_numbering(items)
+    items = _renumber_questions(items)
+    items = _drop_duplicate_headings(items)
+    items = _dedupe_repeated_phrase(items)
+    return items
 
 
 def _template_section_names(doc, template_summary=""):
@@ -362,14 +443,24 @@ def _normalize_table_layout(doc):
             tblPr.append(layout)
         layout.set(_qn('w:type'), 'fixed')
 
-        # 定位统一
+        # ── 定位统一（强制重建 tblpPr，彻底清掉模板残留的 tblpX 偏移）──
+        # 老师模板里表0 常用 tblpXSpec=center、主表用 horzAnchor=page+tblpX=1157，
+        # 这些都会让表格整体偏移（实测会出现左偏 -30 / 右偏 -44 dxa 的错位）。
+        # 只"改属性"不够稳，直接重建 tblpPr 最彻底。
         tblpPr = tblPr.find(_qn('w:tblpPr'))
-        if tblpPr is not None:
-            tblpPr.set(_qn('w:horzAnchor'), 'margin')
-            for attr in ('w:tblpX', 'w:tblpXSpec'):
-                if tblpPr.get(_qn(attr)) is not None:
-                    del tblpPr.attrib[_qn(attr)]
-            tblpPr.set(_qn('w:tblpX'), '0')
+        if tblpPr is None:
+            tblpPr = tblPr.makeelement(_qn('w:tblpPr'), {})
+            # tblpPr 在 tblPr 里应尽量靠前，放在 tblStyle 之后
+            kids = list(tblPr)
+            idx = 1 if kids and kids[0].tag == _qn('w:tblStyle') else 0
+            tblPr.insert(idx, tblpPr)
+        # 清空旧属性后仅保留"垂直浮动所需"的最小集合
+        for a in list(tblpPr.attrib):
+            del tblpPr.attrib[a]
+        tblpPr.set(_qn('w:vertAnchor'), 'text')
+        tblpPr.set(_qn('w:horzAnchor'), 'margin')
+        tblpPr.set(_qn('w:tblpX'), '0')
+        # tblpY 保留模板原值（决定上下位置），没有就用 0
         for tag in ('w:jc', 'w:tblInd'):
             for el in tblPr.findall(_qn(tag)):
                 tblPr.remove(el)
