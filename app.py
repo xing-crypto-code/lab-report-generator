@@ -378,8 +378,8 @@ def composer_submit(message, template_file, api_key, api_base, model, use_builti
             chat_mod._session.append(("ai", f"❌ 生成出错：{e}"))
             return chat_mod.render_chat_preview(chat_mod._session), _nochange, "❌ 出错", _nochange, _nochange
         if dl:
-            chat_mod._session.append(("ai", "✅ 报告已生成，见下方预览；点「⬇ 下载」保存 .docx。\n"
-                                           "还想改？直接在下面继续输入要求即可。"))
+            chat_mod._session.append(("ai", "✅ 报告已生成，可在上方预览；点「下载 .docx」保存。\n"
+                                           "想改？在输入框继续提要求即可。"))
         else:
             chat_mod._session.append(("ai", f"❌ 生成失败：{dl_status}"))
         return chat_mod.render_chat_preview(chat_mod._session), dl, dl_status, preview, log
@@ -391,7 +391,7 @@ def composer_submit(message, template_file, api_key, api_base, model, use_builti
     # ── C. 无文件、有文字 → 对话修订 ──
     if not chat_mod.get_context().get("sections"):
         chat_mod._session.append(("user", text))
-        chat_mod._session.append(("ai", "⚠️ 还没有报告可以修改。请先在下方输入框用 📎 上传实验指导手册，"
+        chat_mod._session.append(("ai", "⚠️ 还没有报告可以改。请先用输入框左侧 📎 上传实验指导书，"
                                         "我会先生成第一版。"))
         return chat_mod.render_chat_preview(chat_mod._session), _nochange, _nochange, _nochange, _nochange
 
@@ -439,287 +439,404 @@ def _build_preview(sections, analysis) -> str:
 
 # ── 像素风 / 精简终端风（星露谷式像素字体 + 亮/暗双主题一键切换）──
 CSS = r"""
-@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=Silkscreen&family=VT323&display=swap');
-
-/* ── 浅色主题（默认）· 宇宙废土沙盒像素风（Minecraft 材质/光影灵感）── */
+/* ── 浅色（默认）── */
 :root {
-  --bg0: #e9e2d5;   /* 页面底（废土沙黄） */
-  --bg1: #fbf7ef;   /* 卡片（沙色白） */
-  --bg2: #e4d9c2;   /* hover / 次级块（干草色） */
-  --line: #b9ab8f;  /* 边框（沙岩） */
-  --line2: #8f7d5e; /* 强调边框（焦褐） */
-  --acc: #6f8f4e;   /* 主色 矿坑苔绿 */
-  --acc2: #b97a3d;  /* 副色 废土橙/熔岩 */
-  --ink: #3c3a33;   /* 正文（深土） */
-  --dim: #7d735f;   /* 次级文字（灰土） */
-  --err: #c0392b;
-  --deep: #433c2c;  /* 深描边（像素黑边·岩漆黑） */
-  --soft: #fffdf7;  /* 输入底（沙白） */
-  --pix: 'Pixelify Sans','Silkscreen','Press Start 2P','SimSun','宋体',cursive,monospace;
-  --term: 'VT323','Courier New',monospace;
-  --song: 'SimSun','宋体',sans-serif;
-  --fade: linear-gradient(180deg, rgba(111,143,78,.10), rgba(185,122,61,.10));
+  --bg0: #ffffff;          /* 页面底 */
+  --bg1: #fafafa;          /* 卡片 */
+  --bg2: #f4f4f5;          /* hover / 次级块 */
+  --line: #e4e4e7;         /* 常规边框 */
+  --line2: #d4d4d8;        /* 强调边框 */
+  --acc: #2563eb;          /* 主色（克制蓝） */
+  --acc-hover: #1d4ed8;
+  --ink: #18181b;          /* 正文 */
+  --ink2: #3f3f46;         /* 次级正文 */
+  --dim: #71717a;          /* 说明文字 */
+  --err: #dc2626;
+  --ok: #16a34a;
+  --soft: #ffffff;         /* 输入底 */
+  --radius: 10px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 2px rgba(0,0,0,.04);
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+          'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, monospace;
+  --song: 'SimSun', '宋体', serif;
 }
 
-/* ── 深色主题（一键切换 · 宇宙废土暗夜）── */
+/* ── 深色 ── */
 :root[data-ui-theme="dark"] {
-  --bg0: #181410;   /* 岩洞黑 */
-  --bg1: #241e16;   /* 卡片·焦木 */
-  --bg2: #2f271d;   /* hover·熔岩暗层 */
-  --line: #3d3327;  /* 岩缝 */
-  --line2: #5c4a33; /* 焦岩 */
-  --acc: #7fae56;   /* 末地苔绿 */
-  --acc2: #d98a4b;  /* 熔岩橙 */
-  --ink: #e6dcc8;   /* 沙白正文 */
-  --dim: #9a8c72;   /* 灰土 */
-  --err: #ff6b5e;
-  --deep: #000000;  /* 星际黑 */
-  --soft: #1c1712;  /* 岩灰输入底 */
+  --bg0: #09090b;
+  --bg1: #111113;
+  --bg2: #18181b;
+  --line: #27272a;
+  --line2: #3f3f46;
+  --acc: #3b82f6;
+  --acc-hover: #60a5fa;
+  --ink: #fafafa;
+  --ink2: #d4d4d8;
+  --dim: #a1a1aa;
+  --err: #f87171;
+  --ok: #4ade80;
+  --soft: #0c0c0e;
+  --shadow: none;
 }
 
-.gradio-container {
-  max-width: 980px !important;
-  margin: 0 auto;
+/* ── 基础排版 ── */
+html, body, .gradio-container {
   background: var(--bg0) !important;
-  font-family: var(--song);
   color: var(--ink);
+  font-family: var(--font) !important;
+  -webkit-font-smoothing: antialiased;
 }
-body, .gradio-container { background: var(--bg0) !important; }
-
-/* —— 宇宙废土沙盒氛围：背景像素噪点 + 暗物质星云(深色) —— */
-body::before {
-  content: "";
-  position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background-image:
-    radial-gradient(circle at 18% 12%, var(--fade), transparent 42%),
-    radial-gradient(circle at 82% 86%, var(--fade), transparent 45%);
-}
-/* 前景像素噪点（早沙滩/石块颗粒），营造材质包颗粒感 */
 .gradio-container {
-  background-image:
-    linear-gradient(45deg, rgba(0,0,0,.015) 25%, transparent 25%, transparent 75%, rgba(0,0,0,.015) 75%),
-    linear-gradient(45deg, rgba(0,0,0,.015) 25%, transparent 25%, transparent 75%, rgba(0,0,0,.015) 75%);
-  background-size: 6px 6px;
-  background-position: 0 0, 3px 3px;
+  max-width: 900px !important;
+  margin: 0 auto !important;
+  padding: 0 20px 64px !important;
+  font-size: 14px;
 }
-:root[data-ui-theme="dark"] .gradio-container {
-  background-image:
-    radial-gradient(1px 1px at 20px 30px, rgba(255,255,255,.18), transparent),
-    radial-gradient(1px 1px at 90px 120px, rgba(255,255,255,.12), transparent),
-    radial-gradient(1.2px 1.2px at 200px 60px, rgba(255,255,255,.15), transparent),
-    radial-gradient(1px 1px at 320px 180px, rgba(255,255,255,.10), transparent),
-    radial-gradient(1px 1px at 420px 90px, rgba(255,255,255,.16), transparent);
-  background-size: 520px 320px, 620px 420px, 700px 400px, 800px 500px, 900px 600px;
-}
+:root[data-ui-theme="dark"] .gradio-container { color-scheme: dark; }
 
-/* —— 顶部像素横幅 —— */
+/* ── 顶栏：简洁标题 + 副标题 ── */
 .pix-header {
-  position: relative;
-  background: var(--bg1);
-  border: 3px solid var(--deep);
-  box-shadow: inset 0 0 0 2px var(--line), 0 6px 0 0 var(--line);
-  padding: 18px 22px;
-  margin: 14px 0 18px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  padding: 40px 0 28px;
+  margin: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  display: block;
 }
-.pix-header .hd-left { flex: 1; }
 .pix-header h1 {
-  font-family: var(--pix);
-  font-size: 19px;
-  letter-spacing: 1px;
-  color: var(--acc);
-  margin: 0 0 8px;
-  text-shadow: 2px 0 0 var(--bg1), -2px 0 0 var(--bg1), 0 2px 0 var(--bg1), 0 -2px 0 var(--bg1);
+  font-family: var(--font);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0 0 6px;
+  text-shadow: none;
 }
 .pix-header .sub {
-  font-family: var(--term);
-  font-size: 17px;
+  font-family: var(--font);
+  font-size: 13px;
   color: var(--dim);
   margin: 0;
-  letter-spacing: 0.5px;
+  letter-spacing: 0;
+  font-weight: 400;
 }
-.pix-header .pix-dot { color: var(--acc2); }
+.pix-header .pix-dot { color: var(--line2); margin: 0 6px; }
+.pix-caret { display: none; }   /* 去掉闪烁光标 */
+.pix-dot { color: var(--line2); }
 
-/* —— 主题切换按钮（星露谷式像素按钮）—— */
-#themeRow { margin-top: -6px; margin-bottom: 8px; }
+/* ── 主题切换：右上角一个极简图标按钮 ── */
 #themeBtn {
-  font-family: var(--pix) !important;
-  font-size: 14px !important;
-  background: var(--acc) !important;
-  color: #fff !important;
-  border: 3px solid var(--deep) !important;
-  border-radius: 2px !important;
-  box-shadow: 3px 3px 0 0 var(--line2) !important;
-  padding: 8px 16px !important;
-  cursor: pointer;
-  white-space: nowrap;
+  position: fixed !important;
+  top: 18px; right: 20px;
+  z-index: 50;
+  width: 34px !important; height: 34px;
+  min-width: 34px !important;
+  padding: 0 !important;
+  font-size: 15px !important;
   line-height: 1;
-  width: auto !important;
-  min-width: 92px;
-}
-#themeBtn:hover { transform: translate(1px,1px); box-shadow: 2px 2px 0 0 var(--line2) !important; }
-
-/* 区块标签（步骤） */
-.sec-tag {
-  font-family: var(--pix);
-  font-size: 12px;
-  color: #fff;
-  background: var(--acc);
-  display: inline-block;
-  padding: 5px 9px;
-  margin-bottom: 10px;
-  box-shadow: 3px 3px 0 0 var(--line2);
-  letter-spacing: .5px;
-}
-.sec-tag.purple { background: var(--acc2); }
-
-/* 通用块覆盖 */
-.block, .form, .gr-panel, .panel {
+  display: flex; align-items: center; justify-content: center;
   background: var(--bg1) !important;
+  color: var(--dim) !important;
   border: 1px solid var(--line) !important;
-  border-radius: 2px !important;
-  box-shadow: inset 0 0 0 1px var(--bg0);
+  border-radius: 999px !important;
+  box-shadow: var(--shadow) !important;
+  cursor: pointer;
+  transition: all .15s;
 }
-.gradio-container .block { padding: 12px; }
+#themeBtn:hover {
+  color: var(--ink) !important;
+  border-color: var(--line2) !important;
+  transform: none !important;
+  box-shadow: var(--shadow) !important;
+}
 
-/* 输入框 */
+/* ── 通用块：去掉所有像素装饰 ── */
+.block, .form, .gr-panel, .panel,
+.gradio-container .block {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+/* ── 输入框 ── */
 textarea, input[type=text], input[type=password], input[type=email],
 .gradio-container input, .gradio-container textarea, .gradio-container select {
   background: var(--soft) !important;
   border: 1px solid var(--line) !important;
-  border-radius: 2px !important;
+  border-radius: var(--radius-sm) !important;
   color: var(--ink) !important;
-  font-family: var(--term) !important;
-  font-size: 15px !important;
+  font-family: var(--font) !important;
+  font-size: 14px !important;
+  padding: 9px 12px !important;
+  box-shadow: none !important;
+  transition: border-color .15s;
 }
 textarea:focus, input:focus {
   border-color: var(--acc) !important;
-  box-shadow: 0 0 0 1px var(--acc) !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.10) !important;
+  outline: none !important;
 }
 
-/* 上传框虚线像素感 —— 小而美，压缩成紧凑的单栏条 */
-.file-preview, [data-testid="file"], .upload-button, [data-testid="file-upload"] {
-  border: 2px dashed var(--line2) !important;
-  border-radius: 2px !important;
-  background: var(--soft) !important;
-  min-height: 78px !important;
-}
-.upload-button { display: flex; align-items: center; justify-content: center; padding: 6px 10px !important; }
-.upload-button:hover { border-color: var(--acc) !important; }
-/* 上传区内文字压小 */
-[data-testid="file-upload"] {
-  font-size: 12px !important;
-  color: var(--dim) !important;
-}
-/* 上传可用区域压扁（去掉多余大留白） */
-[data-testid="file"] > div > div { padding: 4px 6px !important; }
-
-/* 下拉 */
-.gradio-dropdown, .wrap, .wrap-inner {
-  font-family: var(--term) !important;
-}
-
-/* 按钮——像素块 */
-button:not(.theme-toggle), .gradio-button, [type=button] {
-  font-family: var(--pix) !important;
-  font-size: 12px !important;
-  letter-spacing: 1px !important;
-  border: 3px solid var(--deep) !important;
-  border-radius: 2px !important;
-  box-shadow: 4px 4px 0 0 var(--line), inset 0 -2px 0 0 rgba(0,0,0,.15);
-  transition: none !important;
-  text-transform: uppercase;
-}
-button:not(.theme-toggle):hover { transform: translate(2px,2px); box-shadow: 2px 2px 0 0 var(--line); }
-button.primary {
-  background: var(--acc) !important;
-  color: #fff !important;
-  border-color: var(--deep) !important;
-}
-button.primary:hover { filter: brightness(1.05); }
-
-/* 折叠面板头 */
-details, .accordion, [data-testid="accordion"] {
+/* ── 按钮：Codex 式扁平 ── */
+button:not(#themeBtn), .gradio-button, [type=button] {
+  font-family: var(--font) !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  border-radius: var(--radius-sm) !important;
   border: 1px solid var(--line) !important;
-  border-radius: 2px !important;
   background: var(--bg1) !important;
+  color: var(--ink) !important;
+  box-shadow: none !important;
+  padding: 9px 16px !important;
+  transition: background .15s, border-color .15s, color .15s;
+  transform: none !important;
 }
-.accordion-header, .category, [data-testid="accordion"] summary {
-  font-family: var(--pix) !important;
-  font-size: 12px !important;
-  letter-spacing: .5px !important;
+button:not(#themeBtn):hover {
+  background: var(--bg2) !important;
+  border-color: var(--line2) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+button.primary {
+  background: var(--ink) !important;
+  color: var(--bg0) !important;
+  border-color: var(--ink) !important;
+  font-weight: 500 !important;
+}
+button.primary:hover {
+  background: var(--ink2) !important;
+  border-color: var(--ink2) !important;
+  filter: none !important;
+}
+
+/* ── 主输入框（composer）：Codex 输入条 ── */
+#composerBox {
+  border: 1px solid var(--line2) !important;
+  border-radius: 14px !important;
+  background: var(--soft) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,.05) !important;
+  padding: 2px !important;
+  transition: border-color .15s, box-shadow .15s;
+}
+:root[data-ui-theme="dark"] #composerBox { box-shadow: none !important; }
+#composerBox:focus-within {
+  border-color: var(--acc) !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.10) !important;
+}
+/* 内部所有层都要透明白底，避免 gradio 默认深色块 */
+#composerBox * { background-color: transparent !important; }
+#composerBox textarea, #composerBox input {
+  font-family: var(--font) !important;
+  font-size: 14.5px !important;
+  line-height: 1.6 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--ink) !important;
+  padding: 8px 10px !important;
+}
+#composerBox textarea:focus { box-shadow: none !important; }
+/* 发送按钮（真实类名 .submit-button）：圆形实心 */
+#composerBox button.submit-button,
+button.submit-button {
+  border-radius: 999px !important;
+  width: 32px !important; min-width: 32px !important; height: 32px !important;
+  padding: 0 !important;
+  background: var(--ink) !important;
+  color: var(--bg0) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+#composerBox button.submit-button:hover,
+button.submit-button:hover {
+  background: var(--ink2) !important;
+}
+#composerBox button.submit-button svg { color: var(--bg0) !important; fill: var(--bg0) !important; }
+
+/* 左侧附件按钮（真实类名 .upload-button.icon-button）：无底色图标 */
+#composerBox button.icon-button,
+button.icon-button {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--dim) !important;
+  width: 32px !important; min-width: 32px !important; height: 32px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+}
+#composerBox button.icon-button:hover,
+button.icon-button:hover {
+  background: var(--bg2) !important;
   color: var(--ink) !important;
 }
 
-/* 分隔线 */
-hr { border-color: var(--line) !important; opacity: .6; }
+/* ── 上传区/标签：去掉黑底反色 ── */
+.gradio-container label,
+.gradio-container .block-title,
+.gradio-container span[data-testid="block-info"],
+[data-testid="block-info"],
+label > span {
+  background: transparent !important;
+  color: var(--dim) !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  padding: 0 2px !important;
+}
+/* gradio 有时给 label 套一层深色胶囊 */
+.gradio-container .label-wrap,
+.gradio-container .label-wrap > span {
+  background: transparent !important;
+  color: var(--dim) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
 
-/* markdown 表格（上手说明） */
-.gradio-markdown table { border-collapse: collapse; width: 100%; }
-.gradio-markdown th, .gradio-markdown td { border: 1px solid var(--line); padding: 6px 10px; }
-.gradio-markdown th { background: var(--bg2); color: var(--acc); font-family: var(--pix); font-size: 12px; }
+/* ── 帮助/说明文字：提高对比度 ── */
+.gradio-container .info,
+.gradio-container .description,
+.gradio-container p.info,
+div[class*="info"] {
+  color: var(--dim) !important;
+  font-size: 12.5px !important;
+}
 
-/* 历史记录卡片 */
+/* ── 折叠面板：极简行 ── */
+details, .accordion, [data-testid="accordion"] {
+  border: none !important;
+  border-top: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  margin-top: 24px !important;
+  padding-top: 4px !important;
+}
+.accordion-header, .category, [data-testid="accordion"] summary {
+  font-family: var(--font) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  color: var(--dim) !important;
+  padding: 10px 0 !important;
+  transition: color .15s;
+}
+.accordion-header:hover, [data-testid="accordion"] summary:hover {
+  color: var(--ink) !important;
+}
+
+/* ── 上传控件：细虚线、小高度 ── */
+.file-preview, [data-testid="file"], .upload-button, [data-testid="file-upload"] {
+  border: 1px dashed var(--line2) !important;
+  border-radius: var(--radius-sm) !important;
+  background: transparent !important;
+  min-height: 64px !important;
+  box-shadow: none !important;
+}
+.upload-button {
+  display: flex; align-items: center; justify-content: center;
+  padding: 8px 12px !important;
+  color: var(--dim) !important;
+  font-size: 12.5px !important;
+}
+.upload-button:hover { border-color: var(--acc) !important; }
+[data-testid="file-upload"] { font-size: 12.5px !important; color: var(--dim) !important; }
+[data-testid="file"] > div > div { padding: 2px 4px !important; }
+
+/* ── 下拉 ── */
+.gradio-dropdown, .wrap, .wrap-inner {
+  font-family: var(--font) !important;
+  border-radius: var(--radius-sm) !important;
+}
+
+/* ── 分隔线 / 说明 ── */
+hr { border: none !important; border-top: 1px solid var(--line) !important; opacity: 1; margin: 32px 0 !important; }
+.hint { font-family: var(--font); font-size: 12px; color: var(--dim); }
+
+/* ── 标题层级 ── */
+.gradio-container h3, .gradio-container h4, .gradio-container h5 {
+  font-family: var(--font) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--ink) !important;
+  letter-spacing: 0 !important;
+  margin: 20px 0 10px !important;
+}
+
+/* ── markdown 表格（说明区）── */
+.gradio-markdown table {
+  border-collapse: collapse; width: 100%;
+  font-size: 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.gradio-markdown th, .gradio-markdown td {
+  border-bottom: 1px solid var(--line);
+  border-left: none; border-right: none;
+  padding: 8px 12px;
+  text-align: left;
+}
+.gradio-markdown th {
+  background: var(--bg2);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.gradio-markdown td { color: var(--ink2); }
+
+/* ── 历史记录卡片 ── */
 .hist-card {
   border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
   background: var(--bg1);
-  padding: 10px 12px;
+  padding: 12px 14px;
   margin-bottom: 8px;
-  border-left: 4px solid var(--acc);
+  border-left: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  transition: border-color .15s;
 }
-.hist-card .h-title { font-size: 15px; color: var(--ink); }
-.hist-card .h-meta { font-size: 13px; color: var(--dim); font-family: var(--term); }
-.hist-card a { color: var(--acc); text-decoration: none; font-weight: 600; }
+.hist-card:hover { border-color: var(--line2); }
+.hist-card .h-title { font-size: 14px; font-weight: 500; color: var(--ink); }
+.hist-card .h-meta { font-size: 12px; color: var(--dim); font-family: var(--font); }
+.hist-card a { color: var(--acc); text-decoration: none; font-weight: 500; }
+.hist-card a:hover { color: var(--acc-hover); }
 
-/* 状态光标动画 */
-@keyframes blink { 50% { opacity: 0; } }
-.pix-caret { animation: blink 1.1s step-end infinite; color: var(--acc); }
-
-/* 预览框 */
-.preview-box {
-  border: 1px solid var(--line);
-  background: var(--soft);
-  padding: 10px;
-  font-family: var(--term);
-  color: var(--ink);
-}
-
-/* 内容区标题 */
-.gradio-container h3, .gradio-container h4, .gradio-container h5 {
-  font-family: var(--pix) !important;
-  font-size: 13px !important;
-  color: var(--acc2) !important;
-  letter-spacing: .5px;
-}
-
-/* 状态栏 */
+/* ── 状态栏 ── */
 .pix-statusbar {
-  border-top: 2px solid var(--line);
-  margin-top: 18px;
-  padding-top: 10px;
-  font-family: var(--term);
-  font-size: 14px;
+  border-top: none;
+  margin-top: 0;
+  padding: 8px 2px;
+  font-family: var(--font);
+  font-size: 13px;
   color: var(--dim);
+  min-height: 0;
+  line-height: 1.6;
 }
+/* 预览列在空状态下不要占高度 */
+.out-row .html-container:empty,
+.out-row > div { min-height: 0 !important; }
+.gradio-container .html-container { min-height: 0 !important; padding: 0 !important; }
+.gradio-container .html-container > div:empty { display: none; }
 
-.gradio-container footer { visibility: hidden; }
-
-/* ── 报告实时预览（docx→HTML 渲染）── */
+/* ── 报告实时预览 ── */
 .r-wrap {
   max-height: 620px; overflow: auto;
-  background: #fff; color: #222;
-  border: 2px solid var(--line2);
-  border-radius: 6px; padding: 10px 14px;
-  box-shadow: inset 0 0 0 3px var(--soft);
-  font-family: 'SimSun','宋体',serif;
+  background: #ffffff; color: #222;
+  border: 1px solid var(--line2);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  box-shadow: var(--shadow);
+  font-family: var(--song);
 }
-:root[data-ui-theme="dark"] .r-wrap { background: #fdf6e9; }
+:root[data-ui-theme="dark"] .r-wrap { background: #fafafa; }
 .r-toolbar {
-  font-family: var(--term); font-size: 13px; color: var(--acc);
-  border-bottom: 2px solid var(--line); padding-bottom: 6px; margin-bottom: 8px;
+  font-family: var(--font); font-size: 12px; color: var(--dim);
+  border-bottom: 1px solid #e4e4e7; padding-bottom: 8px; margin-bottom: 10px;
   position: sticky; top: 0; background: inherit; z-index: 2;
 }
 .r-page { line-height: 1.5; }
@@ -729,77 +846,120 @@ hr { border-color: var(--line) !important; opacity: .6; }
   font-size: 11px; page-break-inside: avoid;
 }
 .r-table td {
-  border: 1px solid #777; padding: 3px 5px; vertical-align: top;
+  border: 1px solid #a1a1aa; padding: 4px 6px; vertical-align: top;
   background: #fff;
 }
 .r-table .r-para { margin: 1px 0; }
-.r-nested td { border: 1px solid #999; }
+.r-nested td { border: 1px solid #d4d4d8; }
 
-/* 预览里的虚线插图占位框（对应 Word 里的虚线框） */
+/* 预览虚线占位框 */
 .r-ph {
-  border: 2px dashed #9aa0a6;
-  border-radius: 4px;
+  border: 1.5px dashed #b4b4bb;
+  border-radius: 6px;
   background: #fafafa;
-  margin: 8px auto;
+  margin: 10px auto;
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
 }
 .r-ph span {
-  color: #9aa0a6;
-  font-family: 'SimSun','宋体',serif;
-  font-size: 13px;
-  letter-spacing: 1px;
-}
-
-/* ── AI 对话区（DeepSeek Harness 风格气泡）── */
-.chat-empty { color: var(--dim); font-style: italic; padding: 10px 4px; font-family: var(--term); }
-.chat-user, .chat-ai { display: flex; gap: 8px; margin: 8px 0; align-items: flex-start; }
-.chat-user { flex-direction: row-reverse; }
-.chat-ico { flex: 0 0 auto; font-size: 18px; line-height: 1.4; }
-.chat-bubble {
-  max-width: 82%; padding: 8px 12px; border-radius: 10px;
-  line-height: 1.5; font-size: 13px; white-space: pre-wrap;
-}
-.chat-user .chat-bubble { background: var(--acc); color: #fff; border: 1px solid var(--line2); }
-.chat-ai .chat-bubble { background: var(--bg2); color: var(--ink); border: 1px solid var(--line); }
-
-/* ── 单框输入（DeepSeek-Harness 式 composer）布局 ── */
-.chat-shell {
-  background: var(--bg1);
-  border: 2px solid var(--line2);
-  border-radius: 10px;
-  padding: 10px 14px;
-  min-height: 96px;
-  max-height: 420px;
-  overflow-y: auto;
-  box-shadow: inset 0 0 0 3px var(--soft);
-  margin-bottom: 10px;
-}
-#composerBox textarea {
+  color: #9ca3af;
   font-family: var(--song);
-  font-size: 15px;
-  line-height: 1.6;
-}
-#composerBox {
-  border: 2px solid var(--line2) !important;
-  border-radius: 12px !important;
-  background: var(--bg1) !important;
-  box-shadow: inset 0 0 0 3px var(--soft);
-}
-#composerBox:focus-within { border-color: var(--acc) !important; }
-.composer-tools { margin-top: 8px; align-items: flex-end; }
-.composer-tools .mini-upload { min-width: 0; }
-.hint {
-  font-family: var(--term);
-  font-size: 12px;
-  color: var(--dim);
+  font-size: 12.5px;
+  letter-spacing: .5px;
 }
 
-/* 链接与选中文字主题色统一 */
+/* ── 对话气泡：Codex 式 ── */
+.chat-empty {
+  color: var(--dim);
+  font-style: normal;
+  padding: 4px 2px 20px;
+  font-family: var(--font);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+.chat-user, .chat-ai { display: flex; gap: 10px; margin: 14px 0; align-items: flex-start; }
+.chat-user { flex-direction: row-reverse; }
+.chat-ico { flex: 0 0 auto; font-size: 15px; line-height: 1.6; opacity: .7; }
+.chat-bubble {
+  max-width: 84%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  line-height: 1.65;
+  font-size: 13.5px;
+  white-space: pre-wrap;
+  font-family: var(--font);
+}
+.chat-user .chat-bubble {
+  background: var(--bg2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-bottom-right-radius: 4px;
+}
+.chat-ai .chat-bubble {
+  background: transparent;
+  color: var(--ink2);
+  border: 1px solid var(--line);
+  border-bottom-left-radius: 4px;
+}
+
+/* ── composer 工具行 ── */
+.composer-tools { margin-top: 12px; align-items: flex-start; gap: 10px; }
+.composer-tools .mini-upload { min-width: 0; }
+.out-row { margin-top: 20px; align-items: flex-start; gap: 12px; }
+.chat-shell { display: block; margin-top: 24px; }
+
+/* 下载按钮：紧跟内容，不撑满整行 */
+.dl-btn {
+  width: fit-content !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  white-space: nowrap;
+  padding: 8px 18px !important;
+}
+/* 下载状态说明：小字灰色 */
+.out-row .gradio-markdown {
+  font-size: 12px !important;
+  color: var(--dim) !important;
+  line-height: 1.55 !important;
+}
+.out-row .gradio-markdown p { margin: 6px 0 0 !important; }
+
+/* 上传框内的标签：去掉深色底胶囊（真实类名 .label-wrap） */
+.gradio-container .label-wrap,
+.gradio-container button.label-wrap {
+  background: transparent !important;
+  color: var(--dim) !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  padding: 0 2px !important;
+}
+.gradio-container .label-wrap > span {
+  background: transparent !important;
+  color: inherit !important;
+}
+/* 通用：所有 label 都不要深色底 */
+.gradio-container label > span,
+.gradio-container label {
+  background-color: transparent !important;
+}
+
+/* ── 选中文字 ── */
 ::selection { background: var(--acc); color: #fff; }
 a { color: var(--acc); }
+
+/* ── 隐藏 footer ── */
+.gradio-container footer { display: none !important; }
+
+/* ── 滚动条：细 ── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--dim); }
 """
 
 
@@ -829,47 +989,29 @@ function(b){
 
 
 def build_ui():
-    with gr.Blocks(title="无痛实验报告生成器 ▣ PIXEL LAB", theme=gr.themes.Base(primary_hue="green", neutral_hue="gray"), css=CSS) as demo:
+    with gr.Blocks(title="实验报告生成器", theme=gr.themes.Base(primary_hue="blue", neutral_hue="zinc"), css=CSS) as demo:
 
         # ── 顶栏（纯 HTML/CSS，不含需执行的内联 JS）──
         gr.HTML("""
         <div class="pix-header">
             <div class="hd-left">
-                <h1>▣ 无痛实验报告生成器 <span class="pix-caret">▊</span></h1>
-                <p class="sub">> PIXEL LAB REPORT GENERATOR <span class="pix-dot">·</span> OCR + AI → 一键成稿 <span class="pix-dot">·</span> v2.0</p>
+                <h1>实验报告生成器</h1>
+                <p class="sub">上传实验指导书，生成符合学校格式的报告<span class="pix-dot">·</span>OCR + AI</p>
             </div>
         </div>
         """)
 
         # ── 主题切换按钮（gradio Button + js 回调，客户端切换 CSS 变量）──
-        theme_btn = gr.Button("☼ 明", elem_id="themeBtn", variant="primary")
+        theme_btn = gr.Button("☾", elem_id="themeBtn", variant="secondary")
 
         # ══════════════════════════════════════════════
-        #  主区：上方对话流，下方 DeepSeek-Harness 式单框输入
-        #         一个输入框搞定「上传文件 + 提要求 + 发送」
+        #  主区（Codex 式）：输入框是视觉核心，结果区紧随其后
         # ══════════════════════════════════════════════
-        with gr.Column(elem_classes="chat-shell"):
-            chat_display = gr.HTML(chat_mod.render_chat_preview([]))
 
-        # ── 输出区（生成/修订后就地出现）──
-        with gr.Row(elem_classes="out-row"):
-            with gr.Column(scale=1):
-                download_btn = gr.DownloadButton(
-                    "⬇ 下载报告 (.docx)", variant="primary", interactive=True, visible=True
-                )
-                download_status = gr.Markdown(
-                    "*上传指导手册 → 点 ➤ 发送，我会先生成第一版；"
-                    "之后在同一输入框继续提要求即可改稿。*"
-                )
-            with gr.Column(scale=3):
-                preview_out = gr.HTML(
-                    '<div class="pix-statusbar">> 等待生成…<span class="pix-caret">▊</span></div>'
-                )
-
-        # ── 单框输入：附件 + 文字 + 发送（模仿 DeepSeek Harness 输入条）──
+        # ── 单框输入：附件 + 文字 + 发送 ──
         composer = gr.MultimodalTextbox(
             show_label=False,
-            placeholder="上传实验指导手册（可多选），或直接输入修改要求…",
+            placeholder="上传实验指导手册（可多选），或输入修改要求…",
             file_count="multiple",
             file_types=[".pdf", ".docx", ".doc", ".md", ".markdown", ".txt",
                         ".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"],
@@ -879,22 +1021,39 @@ def build_ui():
             submit_btn=True,
             elem_id="composerBox",
         )
+
+        # ── 模板选项：一行紧凑 ──
         with gr.Row(elem_classes="composer-tools"):
-            template_in = gr.File(
-                label="📄 老师模板（可选）",
-                file_types=[".docx", ".doc", ".pdf", ".md"],
-                file_count="multiple",
-                type="filepath",
-                height=78,
-                elem_classes="mini-upload",
-            )
-            with gr.Column(min_width=120):
-                use_builtin = gr.Checkbox(label="内置线框模板", value=True)
-                gr.Markdown(
-                    "<span class='hint'>不传模板就用内置成都大学线框</span>"
+            with gr.Column(scale=3):
+                template_in = gr.File(
+                    label="老师模板（可选）",
+                    file_types=[".docx", ".doc", ".pdf", ".md"],
+                    file_count="multiple",
+                    type="filepath",
+                    height=64,
+                    elem_classes="mini-upload",
+                )
+            with gr.Column(scale=1, min_width=130):
+                use_builtin = gr.Checkbox(label="用内置模板", value=True)
+
+        # ── 结果区 ──
+        with gr.Row(elem_classes="out-row"):
+            with gr.Column(scale=1, min_width=170):
+                download_btn = gr.DownloadButton(
+                    "下载 .docx", variant="primary", interactive=True, visible=True,
+                    elem_classes="dl-btn",
+                )
+                download_status = gr.Markdown("生成后在此下载")
+            with gr.Column(scale=4):
+                preview_out = gr.HTML(
+                    '<div class="pix-statusbar">生成后在这里预览报告</div>'
                 )
 
-        with gr.Accordion("⚙ 模型 / API 设置", open=False):
+        # ── 对话流 ──
+        with gr.Column(elem_classes="chat-shell"):
+            chat_display = gr.HTML(chat_mod.render_chat_preview([]))
+
+        with gr.Accordion("模型 / API", open=False):
             with gr.Row():
                 model_sel = gr.Dropdown(
                     label="AI 模型",
@@ -904,17 +1063,16 @@ def build_ui():
                     scale=3,
                 )
                 with gr.Column(scale=1):
-                    api_key_in = gr.Textbox(label="API Key（留空=用 .env）", type="password", placeholder="sk-…")
+                    api_key_in = gr.Textbox(label="API Key", type="password", placeholder="留空则用 .env")
                     api_base_in = gr.Textbox(label="API 地址", value=LLM_BASE_URL or "https://api.deepseek.com")
 
-        with gr.Accordion("🔍 处理日志 / LOG", open=False):
-            log_out = gr.Textbox(label="日志", lines=10, max_lines=25)
+        with gr.Accordion("处理日志", open=False):
+            log_out = gr.Textbox(label="日志", lines=10, max_lines=25, show_label=False)
 
         # ── 历史记录区 ──
-        with gr.Accordion("📚 历史生成记录（可重复下载，不耗 Token）", open=False):
+        with gr.Accordion("历史记录", open=False):
             with gr.Row():
-                refresh_btn = gr.Button("↻ 刷新历史")
-                gr.Markdown("&nbsp;")
+                refresh_btn = gr.Button("刷新")
             history_out = gr.HTML(history_mod.render_history_html())
 
         # ── 发送（Box 内回车 / ➤ 按钮 都走同一入口）──
@@ -936,37 +1094,23 @@ def build_ui():
         theme_btn.click(fn=None, inputs=[], outputs=[], js=TOGGLE_JS)
         demo.load(fn=None, inputs=[], outputs=[], js=RESTORE_JS)
 
-        # ── 说明 ──
-        gr.Markdown("""
-        ---
-        ### ▸ 快速上手
+        # ── 说明（简洁两段，收进折叠区）──
+        with gr.Accordion("使用说明", open=False):
+            gr.Markdown("""
+**三步出稿**
 
-        | 步骤 | 操作 |
-        |:---:|---|
-        | ① | 上传 **实验指导手册**（PDF 或拍照） |
-        | ② | 上传老师 **模板** .docx（或勾选内置模板） |
-        | ③ | 选择 **AI 模型**（推荐 DeepSeek V3） |
-        | ④ | 点击 **一键生成**，下载 .docx 微调 |
+1. 点输入框左侧回形针，上传**实验指导书**（PDF / Word / 图片，可多选）
+2. 想用老师的模板就上传到「老师模板」，不传则用内置成都大学线框
+3. 点发送，生成后可下载 `.docx`
 
-        ### ▸ 免费使用
+**改稿**：生成后在同一个输入框继续打字，例如「真值表第三行重算」
+「实验小结写具体些」，每次生成新版本（`_改稿v1`、`_改稿v2`…）。
 
-        API 走 **硅基流动 SiliconFlow** 或 **DeepSeek 官方**，自动匹配。
+**模型**：选 `deepseek-chat` 走官方；选带前缀的（`deepseek-ai/…`、`Qwen/…`）
+走硅基流动，需在「模型 / API」里填 SiliconFlow 的 Key。
 
-        **模型 ↔ 服务商自动匹配**：选「DeepSeek-chat / DeepSeek-reasoner」→ 自动走官方便用 `.env` 里的官方 Key；
-        选带前缀的模型（`deepseek-ai/…`、`Qwen/…`、`zai-org/…`）→ 自动走硅基流动 SiliconFlow，需在「引擎」填入
-        SiliconFlow 的 API Key（或在 `.env` 设置 `SILICONFLOW_API_KEY`），否则会提示鉴权失败。
-
-        ### ▸ 内置知识库
-
-        | 实验类型 | 标准章节 |
-        |---|---|
-        | 物理 | 目的 → 原理 → 器材 → 步骤 → 数据 → 处理 → 误差 → 结论 |
-        | 化学 | 目的 → 反应方程式 → 试剂仪器 → 步骤 → 数据 → 讨论 → 结论 |
-        | 电路 | 目的 → 电路图 → 仪器器件 → 步骤 → 波形/数据 → 误差分析 |
-        | 力学 | 目的 → 公式推导 → 仪器 → 步骤 → 数据图表 → 误差 → 结论 |
-
-        > AI 自动识别实验类型并匹配标准结构；OCR 前做图像去噪/增强/二值化预处理。
-        """)
+**识别实验类型**：物理 / 化学 / 电路 / 力学 / 光学各自匹配标准章节结构。
+""")
 
     return demo
 
