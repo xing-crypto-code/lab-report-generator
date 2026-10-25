@@ -439,122 +439,170 @@ def _build_preview(sections, analysis) -> str:
 
 # ── 像素风 / 精简终端风（星露谷式像素字体 + 亮/暗双主题一键切换）──
 CSS = r"""
-/* ── 浅色（默认）── */
+/* ═══════════════════════════════════════════════════════════
+   像素沙盒风 · PIXEL SANDBOX
+   参考《我的世界》方块描边 + 《饥荒》羊皮纸木纹 + 《星露谷》暖色物品栏
+   双主题：白天草原（亮） / 夜晚洞穴（暗）
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 白天草原（默认）── */
 :root {
-  --bg0: #ffffff;          /* 页面底 */
-  --bg1: #fafafa;          /* 卡片 */
-  --bg2: #f4f4f5;          /* hover / 次级块 */
-  --line: #e4e4e7;         /* 常规边框 */
-  --line2: #d4d4d8;        /* 强调边框 */
-  --acc: #2563eb;          /* 主色（克制蓝） */
-  --acc-hover: #1d4ed8;
-  --ink: #18181b;          /* 正文 */
-  --ink2: #3f3f46;         /* 次级正文 */
-  --dim: #71717a;          /* 说明文字 */
-  --err: #dc2626;
-  --ok: #16a34a;
-  --soft: #ffffff;         /* 输入底 */
-  --radius: 10px;
-  --radius-sm: 8px;
-  --shadow: 0 1px 2px rgba(0,0,0,.04);
-  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
-          'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, monospace;
-  --song: 'SimSun', '宋体', serif;
+  --bg0: #7d9c63;          /* 草地底（压低饱和） */
+  --bg1: #f6ecd2;          /* 羊皮纸卡片 */
+  --bg2: #e8d8b0;          /* 深羊皮纸 / hover */
+  --wood: #8b5e3c;         /* 木框 */
+  --wood-dk: #5c3a21;      /* 木框暗部 */
+  --wood-lt: #b07d4f;      /* 木框亮部 */
+  --stone: #9a9a94;        /* 石质 */
+  --stone-dk: #5e5e58;
+  --line: #c9b48e;         /* 常规描边 */
+  --line2: #6b4f2f;        /* 强调描边 */
+  --ink: #3a2a1a;          /* 正文墨色 */
+  --ink2: #58432c;
+  --dim: #7a6344;
+  --acc: #5b8c3e;          /* 主色 苔绿（确认/生成） */
+  --acc-lt: #7cb342;
+  --acc2: #d97a2b;         /* 副色 琥珀（警告/强调） */
+  --gold: #e8b53c;         /* 金币黄 */
+  --red: #b5342c;
+  --blue: #3c6ea5;
+  --shadow: 4px 4px 0 0 rgba(58,42,26,.30);
+  --shadow-sm: 2px 2px 0 0 rgba(58,42,26,.30);
+  --font: 'Pixelify Sans', 'Silkscreen', 'SimSun', '宋体', monospace;
+  --body: 'SimSun', '宋体', 'Microsoft YaHei', serif;
+  --mono: 'VT323', 'Courier New', monospace;
+  --px: 2px;
 }
 
-/* ── 深色 ── */
+/* ── 夜晚洞穴（暗）── */
 :root[data-ui-theme="dark"] {
-  --bg0: #09090b;
-  --bg1: #111113;
-  --bg2: #18181b;
-  --line: #27272a;
-  --line2: #3f3f46;
-  --acc: #3b82f6;
-  --acc-hover: #60a5fa;
-  --ink: #fafafa;
-  --ink2: #d4d4d8;
-  --dim: #a1a1aa;
-  --err: #f87171;
-  --ok: #4ade80;
-  --soft: #0c0c0e;
-  --shadow: none;
+  --bg0: #1c2438;
+  --bg1: #2a2233;
+  --bg2: #382c42;
+  --wood: #4a3226;
+  --wood-dk: #2a1c14;
+  --wood-lt: #6b4a34;
+  --stone: #4a4a55;
+  --stone-dk: #2a2a32;
+  --line: #4a3d52;
+  --line2: #7a5c3a;
+  --ink: #efe4cf;
+  --ink2: #d3c2a5;
+  --dim: #9c8870;
+  --acc: #6fa84a;
+  --acc-lt: #8ecb5e;
+  --acc2: #e08c3a;
+  --gold: #f0c24c;
+  --red: #d9554a;
+  --blue: #5b93d1;
+  --shadow: 4px 4px 0 0 rgba(0,0,0,.55);
+  --shadow-sm: 2px 2px 0 0 rgba(0,0,0,.55);
 }
 
-/* ── 基础排版 ── */
+/* ── 基础 ── */
+@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=VT323&display=swap');
+
 html, body, .gradio-container {
   background: var(--bg0) !important;
   color: var(--ink);
-  font-family: var(--font) !important;
-  -webkit-font-smoothing: antialiased;
+  font-family: var(--body) !important;
+  -webkit-font-smoothing: none;
+  image-rendering: pixelated;
 }
+/* 草地/洞穴纹理（像素噪点 + 明暗斑块，模拟材质包） */
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(255,255,255,.10) 0 2px, transparent 2px),
+    radial-gradient(circle at 38% 62%, rgba(0,0,0,.10) 0 2px, transparent 2px),
+    radial-gradient(circle at 71% 33%, rgba(255,255,255,.08) 0 2px, transparent 2px),
+    radial-gradient(circle at 88% 78%, rgba(0,0,0,.08) 0 2px, transparent 2px),
+    linear-gradient(45deg, rgba(255,255,255,.045) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.045) 75%),
+    linear-gradient(45deg, rgba(0,0,0,.045) 25%, transparent 25%, transparent 75%, rgba(0,0,0,.045) 75%);
+  background-size: 120px 120px, 160px 160px, 200px 200px, 240px 240px, 10px 10px, 10px 10px;
+  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 5px 5px;
+}
+:root[data-ui-theme="dark"] body::before {
+  background-image:
+    radial-gradient(1px 1px at 20px 30px, rgba(255,220,150,.22), transparent),
+    radial-gradient(1px 1px at 110px 90px, rgba(255,220,150,.14), transparent),
+    radial-gradient(1.4px 1.4px at 220px 160px, rgba(255,220,150,.18), transparent),
+    radial-gradient(1px 1px at 330px 60px, rgba(255,220,150,.12), transparent),
+    linear-gradient(45deg, rgba(0,0,0,.10) 25%, transparent 25%, transparent 75%, rgba(0,0,0,.10) 75%);
+  background-size: 400px 240px, 500px 300px, 600px 360px, 700px 420px, 10px 10px;
+}
+
 .gradio-container {
-  max-width: 900px !important;
+  max-width: 940px !important;
   margin: 0 auto !important;
-  padding: 0 20px 64px !important;
+  padding: 0 18px 90px !important;
   font-size: 14px;
 }
-:root[data-ui-theme="dark"] .gradio-container { color-scheme: dark; }
 
-/* ── 顶栏：简洁标题 + 副标题 ── */
+/* ── 顶栏：木牌招牌 ── */
 .pix-header {
-  padding: 40px 0 28px;
-  margin: 0;
-  border: none;
-  background: none;
-  box-shadow: none;
+  position: relative;
+  margin: 26px 0 22px;
+  padding: 18px 22px 16px;
+  background: var(--wood);
+  background-image:
+    repeating-linear-gradient(90deg, rgba(0,0,0,.10) 0 2px, transparent 2px 6px),
+    linear-gradient(180deg, var(--wood-lt), var(--wood));
+  border: var(--px) solid var(--wood-dk);
+  box-shadow: var(--shadow), inset 0 0 0 2px var(--wood-lt);
   display: block;
+}
+.pix-header::after {
+  /* 木牌四角钉子 */
+  content: ""; position: absolute; inset: 6px;
+  border: 1px dashed rgba(255,255,255,.12);
+  pointer-events: none;
 }
 .pix-header h1 {
   font-family: var(--font);
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--ink);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #fdf3d8;
   margin: 0 0 6px;
-  text-shadow: none;
+  text-shadow: 2px 2px 0 var(--wood-dk);
 }
 .pix-header .sub {
-  font-family: var(--font);
-  font-size: 13px;
-  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 16px;
+  color: #e8d3ac;
   margin: 0;
-  letter-spacing: 0;
-  font-weight: 400;
+  letter-spacing: .5px;
 }
-.pix-header .pix-dot { color: var(--line2); margin: 0 6px; }
-.pix-caret { display: none; }   /* 去掉闪烁光标 */
-.pix-dot { color: var(--line2); }
+.pix-header .pix-dot { color: var(--gold); margin: 0 6px; }
+.pix-caret { display: none; }
 
-/* ── 主题切换：右上角一个极简图标按钮 ── */
+/* ── 主题切换：石质旋钮 ── */
 #themeBtn {
   position: fixed !important;
-  top: 18px; right: 20px;
-  z-index: 50;
-  width: 34px !important; height: 34px;
-  min-width: 34px !important;
-  padding: 0 !important;
-  font-size: 15px !important;
-  line-height: 1;
+  top: 16px; right: 18px; z-index: 60;
+  width: 44px !important; height: 44px;
+  min-width: 44px !important; padding: 0 !important;
+  font-family: var(--font) !important; font-size: 17px !important;
   display: flex; align-items: center; justify-content: center;
-  background: var(--bg1) !important;
-  color: var(--dim) !important;
-  border: 1px solid var(--line) !important;
-  border-radius: 999px !important;
-  box-shadow: var(--shadow) !important;
+  background: var(--stone) !important;
+  background-image: radial-gradient(circle at 35% 30%, rgba(255,255,255,.35), transparent 55%);
+  color: var(--bg1) !important;
+  border: var(--px) solid var(--stone-dk) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--shadow-sm), inset -2px -2px 0 rgba(0,0,0,.25) !important;
   cursor: pointer;
-  transition: all .15s;
+  transition: none !important;
 }
 #themeBtn:hover {
-  color: var(--ink) !important;
-  border-color: var(--line2) !important;
-  transform: none !important;
-  box-shadow: var(--shadow) !important;
+  background: var(--wood-lt) !important;
+  color: #fff !important;
+  transform: translate(1px,1px) !important;
+  box-shadow: 1px 1px 0 0 rgba(58,42,26,.30) !important;
 }
 
-/* ── 通用块：去掉所有像素装饰 ── */
-.block, .form, .gr-panel, .panel,
-.gradio-container .block {
+/* ── 通用块：去掉容器，靠组件自身质感 ── */
+.block, .form, .gr-panel, .panel, .gradio-container .block {
   background: transparent !important;
   border: none !important;
   border-radius: 0 !important;
@@ -562,222 +610,251 @@ html, body, .gradio-container {
   padding: 0 !important;
 }
 
-/* ── 输入框 ── */
+/* ── 输入框：羊皮纸卷 ── */
 textarea, input[type=text], input[type=password], input[type=email],
 .gradio-container input, .gradio-container textarea, .gradio-container select {
-  background: var(--soft) !important;
-  border: 1px solid var(--line) !important;
-  border-radius: var(--radius-sm) !important;
+  background: var(--bg1) !important;
+  border: var(--px) solid var(--line2) !important;
+  border-radius: 0 !important;
   color: var(--ink) !important;
-  font-family: var(--font) !important;
+  font-family: var(--body) !important;
   font-size: 14px !important;
-  padding: 9px 12px !important;
-  box-shadow: none !important;
-  transition: border-color .15s;
+  padding: 9px 11px !important;
+  box-shadow: inset 2px 2px 0 rgba(0,0,0,.10) !important;
+  transition: none !important;
 }
 textarea:focus, input:focus {
   border-color: var(--acc) !important;
-  box-shadow: 0 0 0 3px rgba(37,99,235,.10) !important;
+  box-shadow: inset 2px 2px 0 rgba(0,0,0,.10), 0 0 0 2px var(--acc-lt) !important;
   outline: none !important;
 }
 
-/* ── 按钮：Codex 式扁平 ── */
+/* ── 按钮：物品栏方块 ── */
 button:not(#themeBtn), .gradio-button, [type=button] {
   font-family: var(--font) !important;
-  font-size: 13.5px !important;
-  font-weight: 500 !important;
-  letter-spacing: 0 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: .5px !important;
   text-transform: none !important;
-  border-radius: var(--radius-sm) !important;
-  border: 1px solid var(--line) !important;
-  background: var(--bg1) !important;
+  border-radius: 0 !important;
+  border: var(--px) solid var(--line2) !important;
+  background: var(--bg2) !important;
   color: var(--ink) !important;
-  box-shadow: none !important;
-  padding: 9px 16px !important;
-  transition: background .15s, border-color .15s, color .15s;
-  transform: none !important;
+  box-shadow: var(--shadow-sm), inset -2px -2px 0 rgba(0,0,0,.14),
+              inset 2px 2px 0 rgba(255,255,255,.35) !important;
+  padding: 8px 16px !important;
+  transition: none !important;
+  position: relative;
 }
 button:not(#themeBtn):hover {
-  background: var(--bg2) !important;
-  border-color: var(--line2) !important;
-  transform: none !important;
+  background: var(--bg1) !important;
+  border-color: var(--acc) !important;
+  transform: translate(1px,1px) !important;
+  box-shadow: 1px 1px 0 0 rgba(58,42,26,.30), inset -2px -2px 0 rgba(0,0,0,.14) !important;
+}
+button:not(#themeBtn):active {
+  transform: translate(2px,2px) !important;
   box-shadow: none !important;
 }
+/* 主按钮：苔绿方块，像"确认/合成" */
 button.primary {
-  background: var(--ink) !important;
-  color: var(--bg0) !important;
-  border-color: var(--ink) !important;
-  font-weight: 500 !important;
+  background: var(--acc) !important;
+  background-image: linear-gradient(180deg, var(--acc-lt), var(--acc)) !important;
+  color: #fff !important;
+  border-color: #2f5a1e !important;
+  text-shadow: 1px 1px 0 rgba(0,0,0,.35);
 }
 button.primary:hover {
-  background: var(--ink2) !important;
-  border-color: var(--ink2) !important;
-  filter: none !important;
+  background: var(--acc-lt) !important;
+  background-image: linear-gradient(180deg, #8ecb5e, var(--acc-lt)) !important;
 }
 
-/* ── 主输入框（composer）：Codex 输入条 ── */
+/* ── 主输入框 composer：木框工作台 ── */
 #composerBox {
-  border: 1px solid var(--line2) !important;
-  border-radius: 14px !important;
-  background: var(--soft) !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,.05) !important;
-  padding: 2px !important;
-  transition: border-color .15s, box-shadow .15s;
+  border: var(--px) solid var(--wood-dk) !important;
+  border-radius: 0 !important;
+  background: var(--bg1) !important;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(92,58,33,.045) 0 2px, transparent 2px 7px) !important;
+  box-shadow: var(--shadow),
+              inset 0 0 0 3px var(--wood-lt),
+              inset 0 0 0 5px #7a5232,
+              inset 0 0 0 6px var(--bg2) !important;
+  padding: 12px !important;
+  transition: none !important;
 }
-:root[data-ui-theme="dark"] #composerBox { box-shadow: none !important; }
-#composerBox:focus-within {
-  border-color: var(--acc) !important;
-  box-shadow: 0 0 0 3px rgba(37,99,235,.10) !important;
+/* 内部容器全部继承羊皮纸底，避免任何一格透出深色/绿色 */
+#composerBox,
+#composerBox .form,
+#composerBox .full-container,
+#composerBox .input-container,
+#composerBox .input-wrapper,
+#composerBox .input-row,
+#composerBox > div,
+#composerBox > div > div {
+  background-color: var(--bg1) !important;
+  background-image: none !important;
 }
-/* 内部所有层都要透明白底，避免 gradio 默认深色块 */
-#composerBox * { background-color: transparent !important; }
-#composerBox textarea, #composerBox input {
-  font-family: var(--font) !important;
-  font-size: 14.5px !important;
-  line-height: 1.6 !important;
+/* 只有上传按钮保持隐藏，别处的 hidden 类不动 */
+#composerBox .upload-container.hidden { display: none !important; }
+#composerBox .upload-container {
   border: none !important;
   background: transparent !important;
+}
+/* 让文本域铺满，右侧不留黑边 */
+#composerBox .input-row { align-items: stretch !important; gap: 6px !important; }
+#composerBox .input-wrapper { flex: 1 1 auto !important; min-width: 0 !important; }
+#composerBox textarea {
+  width: 100% !important;
+  min-height: 52px !important;
+}
+#composerBox textarea, #composerBox input {
+  font-family: var(--body) !important;
+  font-size: 14.5px !important;
+  line-height: 1.7 !important;
+  border: none !important;
+  background: var(--bg1) !important;
   box-shadow: none !important;
   color: var(--ink) !important;
-  padding: 8px 10px !important;
+  padding: 6px 8px !important;
+}
+#composerBox textarea::placeholder, #composerBox input::placeholder {
+  color: var(--dim) !important;
+  font-family: var(--mono) !important;
+  font-size: 15px !important;
 }
 #composerBox textarea:focus { box-shadow: none !important; }
-/* 发送按钮（真实类名 .submit-button）：圆形实心 */
-#composerBox button.submit-button,
-button.submit-button {
-  border-radius: 999px !important;
-  width: 32px !important; min-width: 32px !important; height: 32px !important;
-  padding: 0 !important;
-  background: var(--ink) !important;
-  color: var(--bg0) !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-#composerBox button.submit-button:hover,
-button.submit-button:hover {
-  background: var(--ink2) !important;
-}
-#composerBox button.submit-button svg { color: var(--bg0) !important; fill: var(--bg0) !important; }
 
-/* 左侧附件按钮（真实类名 .upload-button.icon-button）：无底色图标 */
-#composerBox button.icon-button,
-button.icon-button {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  color: var(--dim) !important;
-  width: 32px !important; min-width: 32px !important; height: 32px !important;
+/* 发送按钮：绿色宝石圆钮 */
+#composerBox button.submit-button, button.submit-button {
+  border-radius: 0 !important;
+  width: 34px !important; min-width: 34px !important; height: 34px !important;
   padding: 0 !important;
-  border-radius: 8px !important;
+  background: var(--acc) !important;
+  background-image: radial-gradient(circle at 32% 28%, #a4d96a, var(--acc) 70%) !important;
+  color: #fff !important;
+  border: var(--px) solid #2f5a1e !important;
+  box-shadow: var(--shadow-sm), inset -2px -2px 0 rgba(0,0,0,.25) !important;
 }
-#composerBox button.icon-button:hover,
-button.icon-button:hover {
+#composerBox button.submit-button:hover, button.submit-button:hover {
+  background: var(--acc-lt) !important;
+  transform: translate(1px,1px) !important;
+}
+#composerBox button.submit-button svg { color: #fff !important; fill: #fff !important; }
+
+/* 附件按钮：羊皮纸小方块 */
+#composerBox button.icon-button, button.icon-button {
   background: var(--bg2) !important;
+  border: var(--px) solid var(--line2) !important;
+  box-shadow: inset -1px -1px 0 rgba(0,0,0,.15) !important;
+  color: var(--ink2) !important;
+  width: 34px !important; min-width: 34px !important; height: 34px !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+#composerBox button.icon-button:hover, button.icon-button:hover {
+  background: var(--gold) !important;
   color: var(--ink) !important;
 }
 
-/* ── 上传区/标签：去掉黑底反色 ── */
-.gradio-container label,
-.gradio-container .block-title,
-.gradio-container span[data-testid="block-info"],
-[data-testid="block-info"],
-label > span {
-  background: transparent !important;
-  color: var(--dim) !important;
-  font-size: 12.5px !important;
-  font-weight: 500 !important;
-  padding: 0 2px !important;
-}
-/* gradio 有时给 label 套一层深色胶囊 */
-.gradio-container .label-wrap,
-.gradio-container .label-wrap > span {
-  background: transparent !important;
-  color: var(--dim) !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-/* ── 帮助/说明文字：提高对比度 ── */
-.gradio-container .info,
-.gradio-container .description,
-.gradio-container p.info,
-div[class*="info"] {
-  color: var(--dim) !important;
-  font-size: 12.5px !important;
-}
-
-/* ── 折叠面板：极简行 ── */
+/* ── 折叠面板：木箱 ── */
 details, .accordion, [data-testid="accordion"] {
-  border: none !important;
-  border-top: 1px solid var(--line) !important;
+  border: var(--px) solid var(--line2) !important;
   border-radius: 0 !important;
-  background: transparent !important;
-  margin-top: 24px !important;
-  padding-top: 4px !important;
+  background: var(--bg1) !important;
+  box-shadow: var(--shadow-sm) !important;
+  margin-top: 16px !important;
+  padding: 0 !important;
+  overflow: hidden;
 }
 .accordion-header, .category, [data-testid="accordion"] summary {
   font-family: var(--font) !important;
   font-size: 13px !important;
-  font-weight: 500 !important;
-  letter-spacing: 0 !important;
-  color: var(--dim) !important;
-  padding: 10px 0 !important;
-  transition: color .15s;
+  font-weight: 600 !important;
+  letter-spacing: .5px !important;
+  color: var(--ink) !important;
+  background: var(--bg2) !important;
+  padding: 10px 14px !important;
+  border-bottom: var(--px) solid var(--line) !important;
+  transition: none !important;
 }
 .accordion-header:hover, [data-testid="accordion"] summary:hover {
+  background: var(--gold) !important;
   color: var(--ink) !important;
 }
 
-/* ── 上传控件：细虚线、小高度 ── */
+/* ── 上传控件：物品栏格子 ── */
 .file-preview, [data-testid="file"], .upload-button, [data-testid="file-upload"] {
-  border: 1px dashed var(--line2) !important;
-  border-radius: var(--radius-sm) !important;
-  background: transparent !important;
-  min-height: 64px !important;
-  box-shadow: none !important;
+  border: var(--px) dashed var(--line2) !important;
+  border-radius: 0 !important;
+  background: var(--bg1) !important;
+  box-shadow: inset 2px 2px 0 rgba(0,0,0,.06) !important;
+  min-height: 66px !important;
 }
 .upload-button {
   display: flex; align-items: center; justify-content: center;
   padding: 8px 12px !important;
   color: var(--dim) !important;
-  font-size: 12.5px !important;
+  font-family: var(--mono) !important;
+  font-size: 15px !important;
 }
-.upload-button:hover { border-color: var(--acc) !important; }
-[data-testid="file-upload"] { font-size: 12.5px !important; color: var(--dim) !important; }
+.upload-button:hover {
+  border-color: var(--acc) !important;
+  background: var(--bg2) !important;
+}
+[data-testid="file-upload"] {
+  font-family: var(--mono) !important;
+  font-size: 15px !important;
+  color: var(--dim) !important;
+}
 [data-testid="file"] > div > div { padding: 2px 4px !important; }
+
+/* 标签：羊皮纸上写字 */
+.gradio-container .label-wrap, .gradio-container button.label-wrap,
+.gradio-container label > span, .gradio-container label {
+  background: transparent !important;
+  color: var(--ink2) !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-family: var(--font) !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: .3px !important;
+  padding: 0 2px !important;
+}
+.gradio-container .label-wrap > span { background: transparent !important; }
 
 /* ── 下拉 ── */
 .gradio-dropdown, .wrap, .wrap-inner {
-  font-family: var(--font) !important;
-  border-radius: var(--radius-sm) !important;
+  font-family: var(--body) !important;
+  border-radius: 0 !important;
 }
 
-/* ── 分隔线 / 说明 ── */
-hr { border: none !important; border-top: 1px solid var(--line) !important; opacity: 1; margin: 32px 0 !important; }
-.hint { font-family: var(--font); font-size: 12px; color: var(--dim); }
+/* ── 分隔 / 提示 ── */
+hr { border: none !important; border-top: var(--px) dashed var(--line) !important; opacity: 1; margin: 26px 0 !important; }
+.hint { font-family: var(--mono); font-size: 15px; color: var(--dim); }
 
 /* ── 标题层级 ── */
 .gradio-container h3, .gradio-container h4, .gradio-container h5 {
   font-family: var(--font) !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
   color: var(--ink) !important;
-  letter-spacing: 0 !important;
-  margin: 20px 0 10px !important;
+  letter-spacing: .5px !important;
+  margin: 18px 0 8px !important;
+  padding-bottom: 4px;
+  border-bottom: var(--px) solid var(--line);
 }
 
-/* ── markdown 表格（说明区）── */
+/* ── Markdown 表格：石板表格 ── */
 .gradio-markdown table {
   border-collapse: collapse; width: 100%;
   font-size: 13px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
+  border: var(--px) solid var(--line2);
 }
 .gradio-markdown th, .gradio-markdown td {
-  border-bottom: 1px solid var(--line);
-  border-left: none; border-right: none;
-  padding: 8px 12px;
+  border: 1px solid var(--line);
+  padding: 7px 11px;
   text-align: left;
 }
 .gradio-markdown th {
@@ -789,54 +866,48 @@ hr { border: none !important; border-top: 1px solid var(--line) !important; opac
 }
 .gradio-markdown td { color: var(--ink2); }
 
-/* ── 历史记录卡片 ── */
+/* ── 历史记录：物品卡片 ── */
 .hist-card {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  border: var(--px) solid var(--line2);
+  border-radius: 0;
   background: var(--bg1);
-  padding: 12px 14px;
-  margin-bottom: 8px;
-  border-left: 1px solid var(--line);
-  box-shadow: var(--shadow);
-  transition: border-color .15s;
+  padding: 11px 13px;
+  margin-bottom: 9px;
+  box-shadow: var(--shadow-sm);
+  transition: none;
 }
-.hist-card:hover { border-color: var(--line2); }
-.hist-card .h-title { font-size: 14px; font-weight: 500; color: var(--ink); }
-.hist-card .h-meta { font-size: 12px; color: var(--dim); font-family: var(--font); }
-.hist-card a { color: var(--acc); text-decoration: none; font-weight: 500; }
-.hist-card a:hover { color: var(--acc-hover); }
+.hist-card:hover { border-color: var(--acc); background: var(--bg2); }
+.hist-card .h-title { font-family: var(--font); font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.hist-card .h-meta { font-family: var(--mono); font-size: 14px; color: var(--dim); }
+.hist-card a { color: var(--acc); text-decoration: none; font-weight: 700; }
+.hist-card a:hover { color: var(--acc2); text-decoration: underline; }
 
-/* ── 状态栏 ── */
+/* ── 状态栏：游戏 HUD ── */
 .pix-statusbar {
   border-top: none;
   margin-top: 0;
   padding: 8px 2px;
-  font-family: var(--font);
-  font-size: 13px;
-  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--ink2);
   min-height: 0;
   line-height: 1.6;
 }
-/* 预览列在空状态下不要占高度 */
-.out-row .html-container:empty,
-.out-row > div { min-height: 0 !important; }
-.gradio-container .html-container { min-height: 0 !important; padding: 0 !important; }
-.gradio-container .html-container > div:empty { display: none; }
 
-/* ── 报告实时预览 ── */
+/* ── 预览：真实纸张 ── */
 .r-wrap {
   max-height: 620px; overflow: auto;
-  background: #ffffff; color: #222;
-  border: 1px solid var(--line2);
-  border-radius: var(--radius);
+  background: #fffef9; color: #222;
+  border: var(--px) solid var(--line2);
+  border-radius: 0;
   padding: 12px 16px;
-  box-shadow: var(--shadow);
-  font-family: var(--song);
+  box-shadow: var(--shadow-sm);
+  font-family: 'SimSun', '宋体', serif;
 }
-:root[data-ui-theme="dark"] .r-wrap { background: #fafafa; }
+:root[data-ui-theme="dark"] .r-wrap { background: #f5efe0; }
 .r-toolbar {
-  font-family: var(--font); font-size: 12px; color: var(--dim);
-  border-bottom: 1px solid #e4e4e7; padding-bottom: 8px; margin-bottom: 10px;
+  font-family: var(--mono); font-size: 15px; color: var(--ink2);
+  border-bottom: var(--px) solid var(--line); padding-bottom: 7px; margin-bottom: 9px;
   position: sticky; top: 0; background: inherit; z-index: 2;
 }
 .r-page { line-height: 1.5; }
@@ -845,121 +916,94 @@ hr { border: none !important; border-top: 1px solid var(--line) !important; opac
   width: 100%; border-collapse: collapse; margin: 6px 0;
   font-size: 11px; page-break-inside: avoid;
 }
-.r-table td {
-  border: 1px solid #a1a1aa; padding: 4px 6px; vertical-align: top;
-  background: #fff;
-}
+.r-table td { border: 1px solid #7a6a52; padding: 4px 6px; vertical-align: top; background: #fff; }
 .r-table .r-para { margin: 1px 0; }
-.r-nested td { border: 1px solid #d4d4d8; }
+.r-nested td { border: 1px solid #b4a58c; }
 
-/* 预览虚线占位框 */
+/* 虚线占位框 */
 .r-ph {
-  border: 1.5px dashed #b4b4bb;
-  border-radius: 6px;
-  background: #fafafa;
+  border: 2px dashed #b4a58c;
+  border-radius: 0;
+  background: #faf5e8;
   margin: 10px auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   box-sizing: border-box;
 }
 .r-ph span {
-  color: #9ca3af;
-  font-family: var(--song);
-  font-size: 12.5px;
-  letter-spacing: .5px;
+  color: #9c8a6a;
+  font-family: var(--mono);
+  font-size: 14px;
+  letter-spacing: 1px;
 }
 
-/* ── 对话气泡：Codex 式 ── */
+/* ── 对话气泡：羊皮纸对话框 ── */
 .chat-empty {
   color: var(--dim);
-  font-style: normal;
+  font-family: var(--mono);
+  font-size: 16px;
   padding: 4px 2px 20px;
-  font-family: var(--font);
-  font-size: 13.5px;
   line-height: 1.7;
 }
-.chat-user, .chat-ai { display: flex; gap: 10px; margin: 14px 0; align-items: flex-start; }
+.chat-user, .chat-ai { display: flex; gap: 9px; margin: 12px 0; align-items: flex-start; }
 .chat-user { flex-direction: row-reverse; }
-.chat-ico { flex: 0 0 auto; font-size: 15px; line-height: 1.6; opacity: .7; }
+.chat-ico {
+  flex: 0 0 auto; font-size: 17px; line-height: 1.5;
+}
 .chat-bubble {
   max-width: 84%;
-  padding: 10px 14px;
-  border-radius: 12px;
+  padding: 9px 13px;
+  border-radius: 0;
   line-height: 1.65;
   font-size: 13.5px;
   white-space: pre-wrap;
-  font-family: var(--font);
+  font-family: var(--body);
+  border: var(--px) solid var(--line2);
+  box-shadow: var(--shadow-sm);
+  position: relative;
 }
 .chat-user .chat-bubble {
-  background: var(--bg2);
-  color: var(--ink);
-  border: 1px solid var(--line);
-  border-bottom-right-radius: 4px;
+  background: var(--gold);
+  color: #3a2a1a;
+  border-color: #a8791f;
 }
 .chat-ai .chat-bubble {
-  background: transparent;
+  background: var(--bg1);
   color: var(--ink2);
-  border: 1px solid var(--line);
-  border-bottom-left-radius: 4px;
 }
 
-/* ── composer 工具行 ── */
+/* ── 工具行 ── */
 .composer-tools { margin-top: 12px; align-items: flex-start; gap: 10px; }
 .composer-tools .mini-upload { min-width: 0; }
 .out-row { margin-top: 20px; align-items: flex-start; gap: 12px; }
 .chat-shell { display: block; margin-top: 24px; }
-
-/* 下载按钮：紧跟内容，不撑满整行 */
-.dl-btn {
-  width: fit-content !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  white-space: nowrap;
-  padding: 8px 18px !important;
-}
-/* 下载状态说明：小字灰色 */
+.dl-btn { width: fit-content !important; max-width: 100% !important; white-space: nowrap; }
 .out-row .gradio-markdown {
-  font-size: 12px !important;
+  font-family: var(--mono) !important;
+  font-size: 15px !important;
   color: var(--dim) !important;
   line-height: 1.55 !important;
 }
 .out-row .gradio-markdown p { margin: 6px 0 0 !important; }
+.gradio-container .html-container { min-height: 0 !important; padding: 0 !important; }
 
-/* 上传框内的标签：去掉深色底胶囊（真实类名 .label-wrap） */
-.gradio-container .label-wrap,
-.gradio-container button.label-wrap {
-  background: transparent !important;
-  color: var(--dim) !important;
-  border: none !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  font-size: 12.5px !important;
-  font-weight: 500 !important;
-  padding: 0 2px !important;
-}
-.gradio-container .label-wrap > span {
-  background: transparent !important;
-  color: inherit !important;
-}
-/* 通用：所有 label 都不要深色底 */
-.gradio-container label > span,
-.gradio-container label {
-  background-color: transparent !important;
-}
-
-/* ── 选中文字 ── */
-::selection { background: var(--acc); color: #fff; }
+/* ── 选中 / 链接 / 滚动条 ── */
+::selection { background: var(--gold); color: #3a2a1a; }
 a { color: var(--acc); }
-
-/* ── 隐藏 footer ── */
 .gradio-container footer { display: none !important; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb {
+  background: var(--wood);
+  border: var(--px) solid var(--wood-dk);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--wood-lt); }
 
-/* ── 滚动条：细 ── */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--dim); }
+/* ── 小屏适配 ── */
+@media (max-width: 640px) {
+  .pix-header h1 { font-size: 20px; }
+  .pix-header .sub { font-size: 14px; }
+  .gradio-container { padding: 0 10px 70px !important; }
+}
 """
 
 
@@ -989,14 +1033,14 @@ function(b){
 
 
 def build_ui():
-    with gr.Blocks(title="实验报告生成器", theme=gr.themes.Base(primary_hue="blue", neutral_hue="zinc"), css=CSS) as demo:
+    with gr.Blocks(title="实验报告工坊", theme=gr.themes.Base(primary_hue="green", neutral_hue="stone"), css=CSS) as demo:
 
-        # ── 顶栏（纯 HTML/CSS，不含需执行的内联 JS）──
+        # ── 顶栏：木牌招牌（纯 HTML/CSS，不含需执行的内联 JS）──
         gr.HTML("""
         <div class="pix-header">
             <div class="hd-left">
-                <h1>实验报告生成器</h1>
-                <p class="sub">上传实验指导书，生成符合学校格式的报告<span class="pix-dot">·</span>OCR + AI</p>
+                <h1>◆ 实验报告工坊</h1>
+                <p class="sub">LAB REPORT CRAFT<span class="pix-dot">·</span>上传指导书<span class="pix-dot">·</span>熔炼成稿<span class="pix-dot">·</span>OCR + AI</p>
             </div>
         </div>
         """)
