@@ -577,29 +577,88 @@ body::before {
 .pix-header .pix-dot { color: var(--gold); margin: 0 6px; }
 .pix-caret { display: none; }
 
-/* ── 主题切换：石质旋钮 ── */
+/* ── 主题切换：水阀门旋钮（点击旋转 180°）── */
 #themeBtn {
   position: fixed !important;
   top: 16px; right: 18px; z-index: 60;
-  width: 44px !important; height: 44px;
-  min-width: 44px !important; padding: 0 !important;
-  font-family: var(--font) !important; font-size: 17px !important;
+  width: 46px !important; height: 46px;
+  min-width: 46px !important; padding: 0 !important;
   display: flex; align-items: center; justify-content: center;
-  background: var(--stone) !important;
-  background-image: radial-gradient(circle at 35% 30%, rgba(255,255,255,.35), transparent 55%);
-  color: var(--bg1) !important;
-  border: var(--px) solid var(--stone-dk) !important;
-  border-radius: 0 !important;
-  box-shadow: var(--shadow-sm), inset -2px -2px 0 rgba(0,0,0,.25) !important;
+  background: radial-gradient(circle at 34% 28%, var(--wood-lt), var(--wood) 68%) !important;
+  color: #f7ecd2 !important;
+  border: var(--px) solid var(--wood-dk) !important;
+  border-radius: 999px !important;
+  box-shadow: var(--shadow-sm), inset -2px -2px 0 rgba(0,0,0,.28),
+              inset 2px 2px 0 rgba(255,255,255,.28) !important;
   cursor: pointer;
+  overflow: visible !important;
+  transition: transform .45s cubic-bezier(.34,1.56,.64,1),
+              background-color .2s, box-shadow .2s !important;
+}
+/* 阀门外圈：六个螺栓（用伪元素 + conic 渐变实现，纯 CSS） */
+#themeBtn::before {
+  content: "";
+  position: absolute; inset: -3px;
+  border-radius: 999px;
+  background:
+    conic-gradient(from 0deg,
+      var(--stone) 0 10deg, transparent 10deg 60deg,
+      var(--stone) 60deg 70deg, transparent 70deg 120deg,
+      var(--stone) 120deg 130deg, transparent 130deg 180deg,
+      var(--stone) 180deg 190deg, transparent 190deg 240deg,
+      var(--stone) 240deg 250deg, transparent 250deg 300deg,
+      var(--stone) 300deg 310deg, transparent 310deg 360deg);
+  z-index: -1; opacity: .9;
+  transition: inherit;
+}
+/* 阀门手柄：中间一道横杠 */
+#themeBtn::after {
+  content: "";
+  position: absolute;
+  width: 26px; height: 5px;
+  background: var(--wood-dk);
+  border-radius: 1px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
+  pointer-events: none;
+  transition: inherit;
+}
+/* 图标压在十字中间 */
+#themeBtn > span { position: relative; z-index: 2; font-size: 15px !important; }
+#themeBtn:hover {
+  background: radial-gradient(circle at 34% 28%, #c99363, var(--wood-lt) 70%) !important;
+  box-shadow: var(--shadow), inset -2px -2px 0 rgba(0,0,0,.28) !important;
+}
+/* 旋转动效：由 JS 添加 .turned 类，阀芯转 180° */
+#themeBtn.turned,
+#themeBtn.turned::before,
+#themeBtn.turned::after {
+  transform: rotate(180deg);
+}
+#themeBtn.turned::after { transform: rotate(90deg); }
+
+/* ══════════ 统一木框（复用到所有功能块）══════════ */
+/* 用法：给容器加 .wood-frame 类，即获得一致的木沿质感 */
+.wood-frame,
+#composerBox,
+.composer-tools .mini-upload,
+details, .accordion, [data-testid="accordion"],
+.out-row .dl-btn,
+.preview-panel {
+  border: var(--px) solid var(--wood-dk) !important;
+  border-radius: 0 !important;
+  background: var(--bg1) !important;
+  box-shadow: var(--shadow),
+              inset 0 0 0 3px var(--wood-lt),
+              inset 0 0 0 5px #7a5232,
+              inset 0 0 0 6px var(--bg2) !important;
   transition: none !important;
 }
-#themeBtn:hover {
-  background: var(--wood-lt) !important;
-  color: #fff !important;
-  transform: translate(1px,1px) !important;
-  box-shadow: 1px 1px 0 0 rgba(58,42,26,.30) !important;
+/* 折叠面板顶部留出木沿，标题栏内缩 */
+details, .accordion, [data-testid="accordion"] {
+  padding: 6px !important;
+  overflow: hidden;
 }
+details > *:not(summary), .accordion > *:not(summary) { margin-top: 0 !important; }
 
 /* ── 通用块：去掉容器，靠组件自身质感 ── */
 .block, .form, .gr-panel, .panel, .gradio-container .block {
@@ -629,7 +688,7 @@ textarea:focus, input:focus {
   outline: none !important;
 }
 
-/* ── 按钮：物品栏方块 ── */
+/* ── 按钮：木框物品栏方块 ── */
 button:not(#themeBtn), .gradio-button, [type=button] {
   font-family: var(--font) !important;
   font-size: 13px !important;
@@ -637,36 +696,46 @@ button:not(#themeBtn), .gradio-button, [type=button] {
   letter-spacing: .5px !important;
   text-transform: none !important;
   border-radius: 0 !important;
-  border: var(--px) solid var(--line2) !important;
-  background: var(--bg2) !important;
-  color: var(--ink) !important;
-  box-shadow: var(--shadow-sm), inset -2px -2px 0 rgba(0,0,0,.14),
-              inset 2px 2px 0 rgba(255,255,255,.35) !important;
-  padding: 8px 16px !important;
+  border: var(--px) solid var(--wood-dk) !important;
+  background: var(--wood) !important;
+  background-image: linear-gradient(180deg, var(--wood-lt), var(--wood)) !important;
+  color: #fdf3d8 !important;
+  box-shadow: var(--shadow-sm),
+              inset 0 0 0 2px var(--wood-lt),
+              inset 0 0 0 3px var(--wood-dk) !important;
+  padding: 9px 18px !important;
   transition: none !important;
   position: relative;
+  text-shadow: 1px 1px 0 rgba(0,0,0,.35);
 }
 button:not(#themeBtn):hover {
-  background: var(--bg1) !important;
-  border-color: var(--acc) !important;
+  background: var(--wood-lt) !important;
+  background-image: linear-gradient(180deg, #c99363, var(--wood-lt)) !important;
   transform: translate(1px,1px) !important;
-  box-shadow: 1px 1px 0 0 rgba(58,42,26,.30), inset -2px -2px 0 rgba(0,0,0,.14) !important;
+  box-shadow: 1px 1px 0 0 rgba(58,42,26,.30),
+              inset 0 0 0 2px #d9a97a,
+              inset 0 0 0 3px var(--wood-dk) !important;
 }
 button:not(#themeBtn):active {
   transform: translate(2px,2px) !important;
   box-shadow: none !important;
 }
-/* 主按钮：苔绿方块，像"确认/合成" */
+/* 主按钮：苔绿木框（确认/合成） */
 button.primary {
   background: var(--acc) !important;
   background-image: linear-gradient(180deg, var(--acc-lt), var(--acc)) !important;
   color: #fff !important;
   border-color: #2f5a1e !important;
+  box-shadow: var(--shadow-sm),
+              inset 0 0 0 2px #8ecb5e,
+              inset 0 0 0 3px #2f5a1e !important;
   text-shadow: 1px 1px 0 rgba(0,0,0,.35);
 }
 button.primary:hover {
-  background: var(--acc-lt) !important;
   background-image: linear-gradient(180deg, #8ecb5e, var(--acc-lt)) !important;
+  box-shadow: 1px 1px 0 0 rgba(58,42,26,.30),
+              inset 0 0 0 2px #a4d96a,
+              inset 0 0 0 3px #2f5a1e !important;
 }
 
 /* ── 主输入框 composer：木框工作台 ── */
@@ -757,14 +826,9 @@ button.primary:hover {
   color: var(--ink) !important;
 }
 
-/* ── 折叠面板：木箱 ── */
+/* 折叠面板：木框在外，标题栏内缩 */
 details, .accordion, [data-testid="accordion"] {
-  border: var(--px) solid var(--line2) !important;
-  border-radius: 0 !important;
-  background: var(--bg1) !important;
-  box-shadow: var(--shadow-sm) !important;
-  margin-top: 16px !important;
-  padding: 0 !important;
+  padding: 7px !important;
   overflow: hidden;
 }
 .accordion-header, .category, [data-testid="accordion"] summary {
@@ -775,39 +839,120 @@ details, .accordion, [data-testid="accordion"] {
   color: var(--ink) !important;
   background: var(--bg2) !important;
   padding: 10px 14px !important;
-  border-bottom: var(--px) solid var(--line) !important;
+  border: var(--px) solid var(--line) !important;
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,.06) !important;
   transition: none !important;
 }
 .accordion-header:hover, [data-testid="accordion"] summary:hover {
   background: var(--gold) !important;
   color: var(--ink) !important;
 }
-
-/* ── 上传控件：物品栏格子 ── */
-.file-preview, [data-testid="file"], .upload-button, [data-testid="file-upload"] {
-  border: var(--px) dashed var(--line2) !important;
-  border-radius: 0 !important;
-  background: var(--bg1) !important;
-  box-shadow: inset 2px 2px 0 rgba(0,0,0,.06) !important;
-  min-height: 66px !important;
+details > *:not(summary), .accordion > *:not(summary) {
+  margin-top: 0 !important;
 }
-.upload-button {
+
+/* ── 上传区：整行套一层木框，内部完全扁平（避免双层框）── */
+.composer-tools {
+  border: var(--px) solid var(--wood-dk) !important;
+  background: var(--bg1) !important;
+  box-shadow: var(--shadow),
+              inset 0 0 0 3px var(--wood-lt),
+              inset 0 0 0 5px #7a5232,
+              inset 0 0 0 6px var(--bg2) !important;
+  padding: 12px 14px !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+/* 行内所有元素一律无框无底无阴影 */
+.composer-tools .mini-upload,
+.composer-tools .mini-upload *,
+.composer-tools [data-testid="file"],
+.composer-tools [data-testid="file"] *,
+.composer-tools [data-testid="file"] > div,
+.composer-tools [data-testid="file"] > div > div {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border-radius: 0 !important;
+}
+/* 投放区用细虚线提示（唯一可见的框） */
+.composer-tools [data-testid="file-upload"],
+.composer-tools .upload-button,
+.composer-tools .upload-container {
+  border: var(--px) dashed var(--line2) !important;
+  min-height: 46px !important;
   display: flex; align-items: center; justify-content: center;
-  padding: 8px 12px !important;
+  color: var(--dim) !important;
+  font-family: var(--mono) !important;
+  font-size: 15px !important;
+  padding: 6px 10px !important;
+  background: var(--bg1) !important;
+  background-image: none !important;
+}
+.composer-tools .upload-container.hidden { display: none !important; }
+/* Gradio drop-zone：命中最内层容器，统一压成羊皮纸 */
+.composer-tools [data-testid="file"] .upload-container,
+.composer-tools [data-testid="file"] .upload-button,
+.composer-tools [data-testid="file"] .file-preview,
+.composer-tools [data-testid="file"] .wrap,
+.composer-tools [data-testid="file"] .boundedheight {
+  background: var(--bg1) !important;
+  background-color: var(--bg1) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border: none !important;
   color: var(--dim) !important;
   font-family: var(--mono) !important;
   font-size: 15px !important;
 }
-.upload-button:hover {
+/* 外层容器也给羊皮纸，避免露出棕底 */
+.composer-tools [data-testid="file"] > div {
+  background: var(--bg1) !important;
+  background-image: none !important;
+}
+/* 唯一保留的虚线投放提示 */
+.composer-tools [data-testid="file"] .upload-container {
+  border: var(--px) dashed var(--line2) !important;
+  min-height: 46px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.composer-tools [data-testid="file"] .upload-container.hidden { display: none !important; }
+.composer-tools [data-testid="file"] .upload-container:hover {
+  background: var(--bg2) !important;
+  border-color: var(--acc) !important;
+}
+/* 拖拽高亮时保持羊皮纸色 */
+.composer-tools [data-testid="file"] .upload-container:hover,
+.composer-tools [data-testid="file"]:hover > div {
+  background: var(--bg2) !important;
+}
+.composer-tools .upload-button:hover {
   border-color: var(--acc) !important;
   background: var(--bg2) !important;
 }
-[data-testid="file-upload"] {
-  font-family: var(--mono) !important;
-  font-size: 15px !important;
-  color: var(--dim) !important;
+/* 标签在框内顶部独立一行 */
+.composer-tools .label-wrap,
+.composer-tools [data-testid="file"] .label-wrap {
+  position: static !important;
+  display: block !important;
+  margin: 0 0 4px 0 !important;
+  padding: 0 !important;
+  color: var(--ink2) !important;
+  font-family: var(--font) !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  line-height: 1.4 !important;
 }
-[data-testid="file"] > div > div { padding: 2px 4px !important; }
+/* 「用内置模板」复选框文字 */
+.composer-tools label,
+.composer-tools span {
+  color: var(--ink2) !important;
+  font-family: var(--font) !important;
+  font-size: 13px !important;
+}
 
 /* 标签：羊皮纸上写字 */
 .gradio-container .label-wrap, .gradio-container button.label-wrap,
@@ -972,7 +1117,7 @@ hr { border: none !important; border-top: var(--px) dashed var(--line) !importan
 }
 
 /* ── 工具行 ── */
-.composer-tools { margin-top: 12px; align-items: flex-start; gap: 10px; }
+.composer-tools { margin-top: 14px; }
 .composer-tools .mini-upload { min-width: 0; }
 .out-row { margin-top: 20px; align-items: flex-start; gap: 12px; }
 .chat-shell { display: block; margin-top: 24px; }
@@ -998,7 +1143,176 @@ a { color: var(--acc); }
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--wood-lt); }
 
-/* ── 小屏适配 ── */
+/* ══════════ 星露谷风装饰贴图（纯 CSS 像素画）══════════ */
+/* 固定在页面四周，不挡交互，低透明度融入背景 */
+.deco-layer {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 0;
+  overflow: hidden;
+  opacity: .55;
+}
+:root[data-ui-theme="dark"] .deco-layer { opacity: .38; }
+
+.deco {
+  position: absolute;
+  image-rendering: pixelated;
+  filter: drop-shadow(2px 2px 0 rgba(0,0,0,.20));
+  animation: deco-bob 4.2s ease-in-out infinite;
+}
+@keyframes deco-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+/* 每只错开节奏，看起来是各自在走动 */
+.deco.d1 { animation-delay: -0.2s; }
+.deco.d2 { animation-delay: -1.4s; }
+.deco.d3 { animation-delay: -2.6s; }
+.deco.d4 { animation-delay: -3.1s; }
+
+/* ── 鸡（用 box-shadow 堆像素点）── */
+.px-chicken {
+  width: 6px; height: 6px;
+  background: transparent;
+  /* 网格：每格 6px。白色身体、红冠、橙嘴、黄脚 */
+  box-shadow:
+    /* 红冠 */
+    18px -6px 0 #d64545,
+    24px -6px 0 #d64545,
+    /* 头 */
+    24px 0 0 #f7f3e8,
+    30px 0 0 #f7f3e8,
+    /* 眼睛 */
+    30px 6px 0 #3a2a1a,
+    /* 嘴 */
+    36px 6px 0 #e89b3c,
+    /* 身体 */
+    12px 6px 0 #f7f3e8,
+    18px 6px 0 #f7f3e8,
+    24px 6px 0 #f7f3e8,
+    12px 12px 0 #f7f3e8,
+    18px 12px 0 #f7f3e8,
+    24px 12px 0 #f7f3e8,
+    30px 12px 0 #f7f3e8,
+    0 12px 0 #efe4cf,
+    6px 12px 0 #f7f3e8,
+    /* 尾羽 */
+    -6px 6px 0 #efe4cf,
+    -6px 0 #efe4cf,
+    /* 翅膀阴影 */
+    18px 12px 0 #e2d6bd,
+    /* 脚 */
+    18px 18px 0 #e89b3c,
+    30px 18px 0 #e89b3c,
+    18px 24px 0 #e89b3c,
+    30px 24px 0 #e89b3c;
+}
+
+/* ── 鸭（黄身、橙嘴）── */
+.px-duck {
+  width: 6px; height: 6px;
+  background: transparent;
+  box-shadow:
+    /* 头 */
+    24px 0 0 #f2d06b,
+    30px 0 0 #f2d06b,
+    30px 6px 0 #3a2a1a,
+    36px 6px 0 #e8892b,
+    /* 身体 */
+    12px 6px 0 #f2d06b,
+    18px 6px 0 #f2d06b,
+    24px 6px 0 #f2d06b,
+    12px 12px 0 #f2d06b,
+    18px 12px 0 #f2d06b,
+    24px 12px 0 #f2d06b,
+    30px 12px 0 #f2d06b,
+    6px 12px 0 #e8c455,
+    /* 尾 */
+    0 6px 0 #e8c455,
+    /* 脚 */
+    18px 18px 0 #e8892b,
+    30px 18px 0 #e8892b;
+}
+
+/* ── 牛（黑白花）── */
+.px-cow {
+  width: 7px; height: 7px;
+  background: transparent;
+  box-shadow:
+    /* 角 */
+    0 -7px 0 #d8cbb0,
+    28px -7px 0 #d8cbb0,
+    /* 头 */
+    7px 0 0 #f7f3e8,
+    14px 0 0 #3a2a1a,
+    21px 0 0 #f7f3e8,
+    7px 7px 0 #f7f3e8,
+    14px 7px 0 #f7f3e8,
+    21px 7px 0 #f7f3e8,
+    /* 身体 + 黑斑 */
+    7px 14px 0 #f7f3e8,
+    14px 14px 0 #3a2a1a,
+    21px 14px 0 #f7f3e8,
+    28px 14px 0 #3a2a1a,
+    35px 14px 0 #f7f3e8,
+    7px 21px 0 #f7f3e8,
+    14px 21px 0 #3a2a1a,
+    21px 21px 0 #f7f3e8,
+    28px 21px 0 #f7f3e8,
+    35px 21px 0 #3a2a1a,
+    /* 腿 */
+    14px 28px 0 #6b4f2f,
+    35px 28px 0 #6b4f2f;
+}
+
+/* ── 农夫小人（草帽 + 背带裤）── */
+.px-farmer {
+  width: 7px; height: 7px;
+  background: transparent;
+  box-shadow:
+    /* 草帽 */
+    -7px 0 0 #e8c455,
+    0 0 0 #e8c455,
+    7px 0 0 #e8c455,
+    14px 0 0 #e8c455,
+    21px 0 0 #e8c455,
+    /* 脸 */
+    7px 7px 0 #f2c9a0,
+    14px 7px 0 #f2c9a0,
+    7px 14px 0 #f2c9a0,
+    14px 14px 0 #3a2a1a,
+    /* 衣服 */
+    0 21px 0 #5b8c3e,
+    7px 21px 0 #5b8c3e,
+    14px 21px 0 #5b8c3e,
+    21px 21px 0 #5b8c3e,
+    /* 背带 */
+    7px 28px 0 #3c6ea5,
+    14px 28px 0 #3c6ea5,
+    /* 腿 */
+    7px 35px 0 #3a2a1a,
+    14px 35px 0 #3a2a1a;
+
+/* 装饰位置：贴着内容区两侧，避免跑到屏幕外 */
+.deco.p1 { left: 26%; top: 12%; }
+.deco.p2 { left: 24%; top: 52%; }
+.deco.p3 { right: 26%; top: 22%; }
+.deco.p4 { right: 24%; top: 60%; }
+.deco.p5 { left: 30%; bottom: 8%; }
+.deco.p6 { right: 30%; bottom: 14%; }
+
+/* 窄屏时把装饰收进内容两侧更窄的位置 */
+@media (max-width: 1280px) {
+  .deco-layer { opacity: .30; }
+  .deco.p1 { left: 12%; }
+  .deco.p2 { left: 10%; }
+  .deco.p3 { right: 12%; }
+  .deco.p4 { right: 10%; }
+  .deco.p5 { left: 14%; }
+  .deco.p6 { right: 14%; }
+}
+@media (max-width: 900px) {
+  .deco-layer { display: none; }
+}
 @media (max-width: 640px) {
   .pix-header h1 { font-size: 20px; }
   .pix-header .sub { font-size: 14px; }
@@ -1007,26 +1321,38 @@ a { color: var(--acc); }
 """
 
 
-# ── 亮/暗主题切换（客户端 JS，走 gradio 的 js= 回调，避免被 HTML 清洗掉）──
+# ── 亮/暗主题切换：水阀门旋转（客户端 JS，走 gradio 的 js= 回调）──
 TOGGLE_JS = r"""
 function(b){
-  const r=document.documentElement;
-  const next=r.getAttribute('data-ui-theme')==='dark' ? '' : 'dark';
+  const r = document.documentElement;
+  const next = r.getAttribute('data-ui-theme') === 'dark' ? '' : 'dark';
   r.setAttribute('data-ui-theme', next);
-  const el=document.getElementById('themeBtn');
-  if(el) el.innerHTML = next==='dark' ? '☼ 明' : '☾ 暗';
-  try{ localStorage.setItem('uiTheme', next); }catch(e){}
+
+  const el = document.getElementById('themeBtn');
+  if (el) {
+    // 阀门旋转换向
+    el.classList.toggle('turned', next === 'dark');
+    // 图标：☾ 夜 / ☀ 日
+    const ico = el.querySelector('span') || el;
+    ico.textContent = next === 'dark' ? '☀' : '☾';
+  }
+  try { localStorage.setItem('uiTheme', next); } catch(e) {}
   return [];
 }
 """
 RESTORE_JS = r"""
 function(b){
-  let s='';
-  try{ s = localStorage.getItem('uiTheme') || ''; }catch(e){}
-  const r=document.documentElement;
-  const el=document.getElementById('themeBtn');
-  if(s==='dark'){ r.setAttribute('data-ui-theme','dark'); if(el) el.innerHTML='☼ 明'; }
-  else if(el){ el.innerHTML='☾ 暗'; }
+  let s = '';
+  try { s = localStorage.getItem('uiTheme') || ''; } catch(e) {}
+  const r = document.documentElement;
+  r.setAttribute('data-ui-theme', s === 'dark' ? 'dark' : '');
+
+  const el = document.getElementById('themeBtn');
+  if (el) {
+    el.classList.toggle('turned', s === 'dark');
+    const ico = el.querySelector('span') || el;
+    ico.textContent = s === 'dark' ? '☀' : '☾';
+  }
   return [];
 }
 """
@@ -1034,6 +1360,18 @@ function(b){
 
 def build_ui():
     with gr.Blocks(title="实验报告工坊", theme=gr.themes.Base(primary_hue="green", neutral_hue="stone"), css=CSS) as demo:
+
+        # ── 星露谷风装饰贴图（纯 CSS 像素画，不挡交互）──
+        gr.HTML("""
+        <div class="deco-layer" aria-hidden="true">
+            <div class="deco px-chicken p1 d1"></div>
+            <div class="deco px-duck    p2 d2"></div>
+            <div class="deco px-cow     p3 d3"></div>
+            <div class="deco px-farmer  p4 d1"></div>
+            <div class="deco px-chicken p5 d4"></div>
+            <div class="deco px-duck    p6 d3"></div>
+        </div>
+        """)
 
         # ── 顶栏：木牌招牌（纯 HTML/CSS，不含需执行的内联 JS）──
         gr.HTML("""
@@ -1045,7 +1383,7 @@ def build_ui():
         </div>
         """)
 
-        # ── 主题切换按钮（gradio Button + js 回调，客户端切换 CSS 变量）──
+        # ── 主题切换按钮（水阀门旋钮，gradio Button + js 回调）──
         theme_btn = gr.Button("☾", elem_id="themeBtn", variant="secondary")
 
         # ══════════════════════════════════════════════
@@ -1090,7 +1428,8 @@ def build_ui():
                 download_status = gr.Markdown("生成后在此下载")
             with gr.Column(scale=4):
                 preview_out = gr.HTML(
-                    '<div class="pix-statusbar">生成后在这里预览报告</div>'
+                    '<div class="pix-statusbar">生成后在这里预览报告</div>',
+                    elem_classes="preview-panel",
                 )
 
         # ── 对话流 ──
