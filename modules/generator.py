@@ -1014,8 +1014,7 @@ def _set_cell_text(cell, content):
             elif kind == "list":
                 if not used_first:
                     _force_left(first)
-                    _apply_para_format(first, first_line_indent_chars=0)
-                    _apply_hanging_indent(first, 24, 24)
+                    _apply_para_format(first, first_line_indent_chars=2)
                     run = first.add_run(it["text"])
                     _apply_run_style(run, BODY_SIZE_PT, bold=False)
                     used_first = True
@@ -1044,7 +1043,7 @@ def _last_child_before(tc, anchor):
 
 def _insert_styled_para(tc, anchor, text, heading=False, list_item=False):
     """在单元格 anchor 后插入一个带正确字体/缩进的段落
-    heading=True → 四号加粗；list_item=True → 小四、悬挂缩进；否则小四首行缩进"""
+    heading=True → 四号加粗、顶格；其余（含编号项）→ 小四、首行缩进 2 字符"""
     p = _insert_para_after(tc, anchor, text)
     from docx.text.paragraph import Paragraph
     para = Paragraph(p, None)
@@ -1056,12 +1055,9 @@ def _insert_styled_para(tc, anchor, text, heading=False, list_item=False):
         for run in para.runs:
             _apply_run_style(run, HEADING_SIZE_PT, bold=True,
                              char_spacing_twips=HEADING_CHAR_SPACING_TWIPS)
-    elif list_item:
-        _apply_para_format(para, first_line_indent_chars=0)
-        _apply_hanging_indent(para, left_pt=24, hanging_pt=24)
-        for run in para.runs:
-            _apply_run_style(run, BODY_SIZE_PT, bold=False)
     else:
+        # 编号项与普通正文用同一种缩进：首行缩进 2 字符。
+        # 以前编号项用"左缩进+悬挂"，第一行顶格、续行缩进，和正文混排时看着不齐。
         _apply_para_format(para, first_line_indent_chars=2)
         for run in para.runs:
             _apply_run_style(run, BODY_SIZE_PT, bold=False)
@@ -1224,6 +1220,9 @@ def _apply_para_format(para, first_line_indent_chars=2, space_before=BODY_SPACE_
     fmt = para.paragraph_format
     fmt.space_before = _Pt(space_before)
     fmt.space_after = _Pt(space_after)
+    # 左缩进必须归零：列表项以前用"左缩进+悬挂"，只改首行会把整段右移 2 字，
+    # 变成"整体缩进 2 字 + 首行再缩 2 字"，和普通正文对不齐。
+    fmt.left_indent = _Pt(0)
     # 首行缩进 2 字符（小四=12pt，2字符=24pt）
     fmt.first_line_indent = _Pt(24 if first_line_indent_chars else 0)
     # 行距：固定值，用 XML 精确设置
@@ -1650,8 +1649,7 @@ def _append_content(after_para, doc, content):
                                  char_spacing_twips=HEADING_CHAR_SPACING_TWIPS)
             elif kind == "list":
                 _force_left(p)
-                _apply_para_format(p, first_line_indent_chars=0)
-                _apply_hanging_indent(p, 24, 24)
+                _apply_para_format(p, first_line_indent_chars=2)
                 _apply_run_style(run, BODY_SIZE_PT, bold=False)
             else:
                 _force_left(p)
@@ -1704,8 +1702,7 @@ def _append_heading_with_content(doc, section_name, content):
         elif kind == "list":
             p = doc.add_paragraph()
             _force_left(p)
-            _apply_para_format(p, first_line_indent_chars=0)
-            _apply_hanging_indent(p, 24, 24)
+            _apply_para_format(p, first_line_indent_chars=2)
             _apply_run_style(p.add_run(it["text"]), BODY_SIZE_PT, bold=False)
         else:
             p = doc.add_paragraph()
