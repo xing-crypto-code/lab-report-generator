@@ -556,7 +556,7 @@ gradio-app {
   --link-text-color: var(--app-accent);
   --color-accent: var(--app-primary);
 
-  max-width: 1180px !important;
+  max-width: 1240px !important;
   width: 100% !important;
   margin: 0 auto !important;
   padding: 0 24px 56px !important;
@@ -1079,7 +1079,121 @@ hr { border: none !important; border-top: 1px solid var(--app-border) !important
 }
 *::-webkit-scrollbar-thumb:hover { background: var(--app-fg-muted); background-clip: content-box; }
 
+/* ─────────── 应用外壳：侧栏 + 主区 ─────────── */
+#appShell {
+  align-items: flex-start !important;
+  gap: 0 !important;
+  flex-wrap: nowrap !important;
+}
+#sidebar {
+  position: sticky;
+  top: 0;
+  flex: 0 0 248px !important;
+  width: 248px !important;
+  min-width: 248px !important;
+  max-width: 248px !important;
+  height: 100vh;
+  padding: 20px 16px 18px 0 !important;
+  border-right: 1px solid var(--app-border);
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+#main {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  padding: 0 0 0 28px !important;
+}
+
+.side-brand { display: flex; align-items: center; gap: 10px; padding: 2px 0 6px; }
+.side-brand .brand-mark {
+  width: 30px; height: 30px; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--app-primary); color: var(--app-primary-fg);
+  border-radius: 8px; font-size: 13px; font-weight: 700;
+}
+.side-brand h1 {
+  font-size: 14px; font-weight: 650; margin: 0; line-height: 1.2;
+  color: var(--app-fg); letter-spacing: -.01em;
+}
+.side-brand p {
+  margin: 2px 0 0; font-size: 10px; line-height: 1;
+  letter-spacing: .1em; color: var(--app-fg-muted);
+}
+
+#newReportBtn {
+  width: 100% !important;
+  justify-content: center !important;
+  margin-top: 2px;
+}
+
+/* 侧栏里的折叠面板：去卡片化，做成小节标题 */
+.side-acc {
+  border: none !important;
+  background: transparent !important;
+  margin-top: 6px !important;
+  padding: 0 !important;
+}
+.side-acc > button.label-wrap,
+.side-acc .label-wrap {
+  padding: 4px 2px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--app-fg-muted) !important;
+  background: transparent !important;
+  border: none !important;
+}
+.side-acc .label-wrap:hover { color: var(--app-fg) !important; background: transparent !important; }
+.side-acc > div, .side-acc [data-testid="accordion-content"] { padding: 6px 0 0 !important; }
+#refreshBtn {
+  width: 100% !important;
+  margin-bottom: 8px !important;
+  font-size: 12px !important;
+  min-height: 30px !important;
+  padding: 4px 10px !important;
+  color: var(--app-fg-muted) !important;
+}
+
+.side-foot {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--app-border);
+  font-size: 11.5px;
+  color: var(--app-fg-muted);
+  display: flex; align-items: center; gap: 6px;
+}
+.side-foot .dot {
+  width: 6px; height: 6px; border-radius: 999px;
+  background: var(--app-success); display: inline-block; flex: 0 0 auto;
+}
+
+/* 侧栏历史卡片（紧凑版） */
+.hist-card {
+  border: 1px solid var(--app-border) !important;
+  border-radius: 8px !important;
+  padding: 8px 10px !important;
+  margin-bottom: 8px !important;
+  background: var(--app-card) !important;
+  box-shadow: none !important;
+}
+.hist-card .h-title {
+  font-size: 12px !important; font-weight: 550 !important;
+  line-height: 1.35 !important;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hist-card .h-meta { font-size: 10.5px !important; margin: 3px 0 7px !important; }
+.hist-card a { font-size: 11.5px !important; padding: 4px 9px !important; border-radius: 6px !important; }
+.hist-empty { font-size: 12px; color: var(--app-fg-muted); line-height: 1.6; padding: 4px 2px; }
+
 /* ─────────── 响应式 ─────────── */
+@media (max-width: 900px) {
+  #sidebar { display: none !important; }
+  #main { padding-left: 0 !important; }
+}
 @media (max-width: 860px) {
   .gradio-container { padding: 0 14px 48px !important; }
   .app-header { padding: 16px 0 14px; }
@@ -1143,105 +1257,141 @@ function(b){
 def build_ui():
     with gr.Blocks(title="实验报告工坊") as demo:
 
-        # ── 顶栏 ──
-        gr.HTML("""
-        <header class="app-header">
-          <div class="brand">
-            <div class="brand-mark">◆</div>
-            <div class="brand-text">
-              <h1>实验报告工坊</h1>
-              <p>上传指导书 · OCR + AI · 一键成稿</p>
-            </div>
-          </div>
-          <span class="pill">本地运行 · <b>密钥自配</b></span>
-        </header>
-        """)
-
-        # ── 主题切换按钮（gradio Button + js 回调）──
+        # ── 主题切换按钮（固定在右上角）──
         theme_btn = gr.Button("☾", elem_id="themeBtn", variant="secondary")
 
-        # ── 新手三步引导条（一眼看懂的流程，取代藏在折叠区的说明）──
-        gr.HTML("""
-        <div class="steps-bar">
-            <span class="step"><b>1</b> 回形针上传实验指导书（PDF/Word/图片，可多选）</span>
-            <span class="step"><b>2</b> 可选：传老师模板，不传用内置模板</span>
-            <span class="step"><b>3</b> 回车 → 生成 → 下载 .docx</span>
-        </div>
-        """)
+        with gr.Row(elem_id="appShell"):
 
-        # ══════════════════════════════════════════════
-        #  主区（Codex 式）：输入框是视觉核心，结果区紧随其后
-        # ══════════════════════════════════════════════
+            # ══════════════════════════════════════════
+            #  侧栏：品牌 / 新建 / 历史 / 状态
+            # ══════════════════════════════════════════
+            with gr.Column(scale=0, min_width=248, elem_id="sidebar"):
+                gr.HTML("""
+                <div class="side-brand">
+                  <div class="brand-mark">◆</div>
+                  <div class="brand-text">
+                    <h1>实验报告工坊</h1>
+                    <p>LAB REPORT CRAFT</p>
+                  </div>
+                </div>
+                """)
 
-        # ── 单框输入：附件 + 文字 + 发送 ──
-        composer = gr.MultimodalTextbox(
-            show_label=False,
-            placeholder="上传实验指导手册（可多选），或输入修改要求…",
-            file_count="multiple",
-            file_types=[".pdf", ".docx", ".doc", ".md", ".markdown", ".txt",
-                        ".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"],
-            sources=["upload"],
-            lines=2,
-            max_lines=8,
-            submit_btn=True,
-            elem_id="composerBox",
-        )
+                new_report_btn = gr.Button("＋　新建报告", variant="primary", elem_id="newReportBtn")
 
-        # ── 模板选项：一行紧凑 ──
-        with gr.Row(elem_classes="composer-tools"):
-            with gr.Column(scale=3):
-                template_in = gr.File(
-                    label="老师模板（可选）",
-                    file_types=[".docx", ".doc", ".pdf", ".md"],
+                with gr.Accordion("历史记录", open=True, elem_classes="side-acc"):
+                    refresh_btn = gr.Button("刷新", size="sm", elem_id="refreshBtn")
+                    history_out = gr.HTML(history_mod.render_history_html())
+
+                gr.HTML("""
+                <div class="side-foot">
+                  <span class="dot"></span>
+                  <span>本地运行 · 密钥自配</span>
+                </div>
+                """)
+
+            # ══════════════════════════════════════════
+            #  主区：提示 → 输入 → 结果 → 对话 → 设置
+            # ══════════════════════════════════════════
+            with gr.Column(scale=1, elem_id="main"):
+                gr.HTML("""
+                <header class="app-header">
+                  <div class="brand-text">
+                    <h1>生成实验报告</h1>
+                    <p>上传指导书，AI 按你的模板成稿</p>
+                  </div>
+                </header>
+                """)
+
+                # ── 三步引导 ──
+                gr.HTML("""
+                <div class="steps-bar">
+                    <span class="step"><b>1</b> 上传实验指导书（PDF / Word / 图片，可多选）</span>
+                    <span class="step"><b>2</b> 可选：传老师模板</span>
+                    <span class="step"><b>3</b> 回车生成 → 下载 .docx</span>
+                </div>
+                """)
+
+                # ── 单框输入：附件 + 文字 + 发送 ──
+                composer = gr.MultimodalTextbox(
+                    show_label=False,
+                    placeholder="上传实验指导手册（可多选），或输入修改要求…",
                     file_count="multiple",
-                    type="filepath",
-                    height=64,
-                    elem_classes="mini-upload",
-                    elem_id="tplUpload",
-                )
-            with gr.Column(scale=1, min_width=130):
-                use_builtin = gr.Checkbox(label="用内置模板", value=True, elem_id="useBuiltin")
-
-        # ── 结果区 ──
-        with gr.Row(elem_classes="out-row"):
-            with gr.Column(scale=1, min_width=170):
-                download_btn = gr.DownloadButton(
-                    "下载 .docx", variant="primary", interactive=True, visible=True,
-                    elem_classes="dl-btn",
-                )
-                download_status = gr.Markdown("生成后在此下载")
-            with gr.Column(scale=4):
-                preview_out = gr.HTML(
-                    '<div class="pix-statusbar">生成后在这里预览报告</div>',
-                    elem_classes="preview-panel",
+                    file_types=[".pdf", ".docx", ".doc", ".md", ".markdown", ".txt",
+                                ".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"],
+                    sources=["upload"],
+                    lines=2,
+                    max_lines=8,
+                    submit_btn=True,
+                    elem_id="composerBox",
                 )
 
-        # ── 对话流 ──
-        with gr.Column(elem_classes="chat-shell"):
-            chat_display = gr.HTML(chat_mod.render_chat_preview([]))
+                # ── 模板选项：一行紧凑 ──
+                with gr.Row(elem_classes="composer-tools"):
+                    with gr.Column(scale=3):
+                        template_in = gr.File(
+                            label="老师模板（可选）",
+                            file_types=[".docx", ".doc", ".pdf", ".md"],
+                            file_count="multiple",
+                            type="filepath",
+                            height=64,
+                            elem_classes="mini-upload",
+                            elem_id="tplUpload",
+                        )
+                    with gr.Column(scale=1, min_width=130):
+                        use_builtin = gr.Checkbox(label="用内置模板", value=True, elem_id="useBuiltin")
 
-        with gr.Accordion("模型 / API", open=True):
-            gr.Markdown("**选一个模型；没填 Key 则用 `.env` 里的**（DeepSeek 官方 `deepseek-chat` 最省心）")
-            with gr.Row():
-                model_sel = gr.Dropdown(
-                    label="AI 模型",
-                    choices=_get_model_choices(),
-                    value=_default_model(),
-                    interactive=True,
-                    scale=3,
-                )
-                with gr.Column(scale=1):
-                    api_key_in = gr.Textbox(label="API Key", type="password", placeholder="留空则用 .env")
-                    api_base_in = gr.Textbox(label="API 地址", value=LLM_BASE_URL or "https://api.deepseek.com")
+                # ── 结果区 ──
+                with gr.Row(elem_classes="out-row"):
+                    with gr.Column(scale=1, min_width=170):
+                        download_btn = gr.DownloadButton(
+                            "下载 .docx", variant="primary", interactive=True, visible=True,
+                            elem_classes="dl-btn",
+                        )
+                        download_status = gr.Markdown("生成后在此下载")
+                    with gr.Column(scale=4):
+                        preview_out = gr.HTML(
+                            '<div class="pix-statusbar">生成后在这里预览报告</div>',
+                            elem_classes="preview-panel",
+                        )
 
-        with gr.Accordion("处理日志", open=False):
-            log_out = gr.Textbox(label="日志", lines=10, max_lines=25, show_label=False)
+                # ── 对话流 ──
+                with gr.Column(elem_classes="chat-shell"):
+                    chat_display = gr.HTML(chat_mod.render_chat_preview([]))
 
-        # ── 历史记录区 ──
-        with gr.Accordion("历史记录", open=False):
-            with gr.Row():
-                refresh_btn = gr.Button("刷新")
-            history_out = gr.HTML(history_mod.render_history_html())
+                with gr.Accordion("模型 / API", open=False):
+                    gr.Markdown("选一个模型；没填 Key 则用 `.env` 里的（DeepSeek 官方 `deepseek-chat` 最省心）")
+                    with gr.Row():
+                        model_sel = gr.Dropdown(
+                            label="AI 模型",
+                            choices=_get_model_choices(),
+                            value=_default_model(),
+                            interactive=True,
+                            scale=3,
+                        )
+                        with gr.Column(scale=1):
+                            api_key_in = gr.Textbox(label="API Key", type="password", placeholder="留空则用 .env")
+                            api_base_in = gr.Textbox(label="API 地址", value=LLM_BASE_URL or "https://api.deepseek.com")
+
+                with gr.Accordion("处理日志", open=False):
+                    log_out = gr.Textbox(label="日志", lines=10, max_lines=25, show_label=False)
+
+                # ── 说明（简洁两段，收进折叠区）──
+                with gr.Accordion("使用说明", open=False):
+                    gr.Markdown("""
+**三步出稿**
+
+1. 点输入框左侧回形针，上传**实验指导书**（PDF / Word / 图片，可多选）
+2. 想用老师的模板就上传到「老师模板」，不传则用内置成都大学线框
+3. 点发送，生成后可下载 `.docx`
+
+**改稿**：生成后在同一个输入框继续打字，例如「真值表第三行重算」
+「实验小结写具体些」，每次生成新版本（`_改稿v1`、`_改稿v2`…）。
+
+**模型**：选 `deepseek-chat` 走官方；选带前缀的（`deepseek-ai/…`、`Qwen/…`）
+走硅基流动，需在「模型 / API」里填 SiliconFlow 的 Key。
+
+**识别实验类型**：物理 / 化学 / 电路 / 力学 / 光学各自匹配标准章节结构。
+""")
 
         # ── 发送（Box 内回车 / ➤ 按钮 都走同一入口）──
         composer.submit(
@@ -1258,27 +1408,19 @@ def build_ui():
             outputs=[history_out],
         )
 
+        # ── 新建报告：聚焦输入框，提示开始新一轮 ──
+        new_report_btn.click(
+            fn=None, inputs=[], outputs=[],
+            js="""function(){
+  const t = document.querySelector('#composerBox textarea');
+  if (t) { t.focus(); t.scrollIntoView({behavior:'smooth', block:'center'}); }
+  return [];
+}""",
+        )
+
         # ── 明暗主题切换（客户端 JS，不入库、不耗 token）──
         theme_btn.click(fn=None, inputs=[], outputs=[], js=TOGGLE_JS)
         demo.load(fn=None, inputs=[], outputs=[], js=RESTORE_JS)
-
-        # ── 说明（简洁两段，收进折叠区）──
-        with gr.Accordion("使用说明", open=False):
-            gr.Markdown("""
-**三步出稿**
-
-1. 点输入框左侧回形针，上传**实验指导书**（PDF / Word / 图片，可多选）
-2. 想用老师的模板就上传到「老师模板」，不传则用内置成都大学线框
-3. 点发送，生成后可下载 `.docx`
-
-**改稿**：生成后在同一个输入框继续打字，例如「真值表第三行重算」
-「实验小结写具体些」，每次生成新版本（`_改稿v1`、`_改稿v2`…）。
-
-**模型**：选 `deepseek-chat` 走官方；选带前缀的（`deepseek-ai/…`、`Qwen/…`）
-走硅基流动，需在「模型 / API」里填 SiliconFlow 的 Key。
-
-**识别实验类型**：物理 / 化学 / 电路 / 力学 / 光学各自匹配标准章节结构。
-""")
 
     return demo
 

@@ -79,8 +79,8 @@ def render_history_html() -> str:
     """
     items = [i for i in load_history() if i.get("docx") and _valid_path(i["docx"])]
     if not items:
-        return ("<p style='color:#999'>📭 还没有生成记录。生成成功后会自动保存，"
-                "以后可随时回来下载，无需再次消耗 Token。</p>")
+        return ("<div class='hist-empty'>还没有生成记录。<br>"
+                "生成成功后会自动保存，之后可随时回来下载，不再消耗 Token。</div>")
 
     try:
         import urllib.parse
@@ -101,11 +101,10 @@ def render_history_html() -> str:
     for i in items:
         url = _file_url(i["docx"])
         portions = [
-            "<div style='background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;margin-bottom:10px'>",
-            f"<div style='font-weight:600;color:#1f2937'>📄 {_htmlesc(i.get('title','未命名'))}</div>",
-            f"<div style='color:#6b7280;font-size:12px;margin:2px 0 8px'>🕐 {i.get('time','')} · 🤖 {_htmlesc(i.get('model','') or '—')}</div>",
-            f"<a href='{url}' download style='display:inline-block;background:#4f46e5;color:white;"
-            f"padding:6px 14px;border-radius:6px;text-decoration:none;font-size:13px'>⬇️ 下载 .docx</a>",
+            "<div class='hist-card'>",
+            f"<div class='h-title'>📄 {_htmlesc(i.get('title','未命名'))}</div>",
+            f"<div class='h-meta'>{i.get('time','')} · {_htmlesc(i.get('model','') or '—')}</div>",
+            f"<a href='{url}' download>下载 .docx</a>",
             "</div>",
         ]
         cards.append("".join(portions))
