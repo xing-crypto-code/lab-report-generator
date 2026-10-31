@@ -16,35 +16,32 @@
 
 ## 🚀 快速开始
 
-### 1. 安装依赖
+### ⭐ 一键启动（推荐，给不会命令行的同学）
+
+安装好 [Python](https://www.python.org/downloads/) 后，**双击 `start.bat`**：
+自动检查依赖 → 启动网页 → 自动打开浏览器 → 填 API Key 即可用。
+
+- 依赖是装在 `libs/` 里的（本仓库自带的三方库），**无需全局安装**。
+- 没有 API Key 也能进界面，用内置模板 + 知识库先试效果。
+- 首次若提示缺依赖：`python install_deps.py` 装全。
+
+### 手动启动（开发用）
 
 ```bash
 pip install -r requirements.txt
 # 或手动：pip install gradio PyMuPDF easyocr torch python-docx openai pillow
+cp .env.example .env    # 编辑填 API Key
+python app.py           # 浏览器打开 http://127.0.0.1:7860
 ```
 
-### 2. 配置 API Key
+### 分享给同学/别人（局域网）
 
-```bash
-cp .env.example .env
-# 编辑 .env，填入硅基流动 API Key（注册: https://siliconflow.cn）
-```
+`app.py` 已监听 `0.0.0.0:7860`。在同一局域网内，让别人浏览器访问
+`http://你的IP:7860` 即可（`ipconfig` 查 IP）。注意这是**你自己的 API Key**，
+别把 `.env` 发给别人。
 
-或直接在 Web 界面填写。
-
-### 3. 启动
-
-```bash
-python app.py
-# 浏览器打开 http://127.0.0.1:7860
-```
-
-### 4. 使用
-
-1. 上传实验指导手册（PDF / 照片）
-2. 上传老师的 .docx 模板（或勾选内置模板）
-3. 选择 AI 模型 → 点击「一键生成」
-4. 下载 .docx，WPS/Office 打开微调 → 交作业
+想让好友用已有的 `libs/`、不装依赖？直接把整个文件夹打包发走，对方装好
+Python 后双击 `start.bat` 即可（体积较大，含 OCR 引擎）。
 
 ## 📂 项目结构
 
