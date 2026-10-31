@@ -111,10 +111,11 @@ def _get_model_choices():
 
 
 def process_files(manual_file, template_file, api_key, api_base, model, use_builtin_template,
-                  requirement=""):
+                  requirement="", on_progress=None):
     """核心处理流水线，返回 (下载文件路径, 下载状态文本, 预览HTML, 日志)
     manual_file / template_file 现在支持多文件（传入列表）。
     requirement: 用户在同一个输入框里顺带写的要求（会并入 AI 提示）
+    on_progress: 可选回调，接收进度文本，用于 UI 实时刷新。
     """
 
     def _norm(f):
@@ -137,10 +138,18 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
         os.environ["LLM_BASE_URL"] = api_base.strip()
 
     status = []
+    # on_progress 回调：每次都追加到 status 并尽量实时外发（梯进式刷新）
+    def report(t):
+        report(t)
+        if on_progress:
+            try:
+                on_progress(t)
+            except Exception:
+                pass
 
     try:
         # ── 第1步：解析实验指导手册（支持多文件）──
-        status.append(f"🔍 正在解析 {len(manuals)} 个实验指导手册…")
+        report(f"🔍 正在解析 {len(manuals)} 个实验指导手册…")
         merged_text_parts = []
         merged_md_parts = []
         merged_tables = []
@@ -149,14 +158,14 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
             ext = Path(mf).suffix.lower()
             _is_img = ext in ('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp')
             if _is_img:
-                status.append(f"   🖼️ [{idx}/{len(manuals)}] 《{Path(mf).name}》 OCR 识别中…"
+                report(f"   🖼️ [{idx}/{len(manuals)}] 《{Path(mf).name}》 OCR 识别中…"
                               f"（CPU 模式较慢，单张最多 90 秒）")
             else:
-                status.append(f"   📄 [{idx}/{len(manuals)}] 《{Path(mf).name}》 解析中…")
+                report(f"   📄 [{idx}/{len(manuals)}] 《{Path(mf).name}》 解析中…")
             try:
                 doc_result = parse_document(mf)
             except ValueError as e:
-                status.append(f"   ⚠️ 《{name}》解析失败：{e}")
+                report(f"   ⚠️ 《{name}》解析失败：{e}")
                 continue
             ocr_text = doc_result["text"]
             ocr_tables = doc_result.get("tables", [])
@@ -167,7 +176,7 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
             _md = (doc_result.get("markdown") or "").strip()
             if _md:
                 merged_md_parts.append(f"【来源：{Path(mf).name} 结构化原文】\n{_md}")
-            status.append(f"   ✓ 《{Path(mf).name}》识别 {len(ocr_text):,} 字符，{len(ocr_tables)} 个表格"
+            report(f"   ✓ 《{Path(mf).name}》识别 {len(ocr_text):,} 字符，{len(ocr_tables)} 个表格"
                           + (f"，结构化 {len(_md)} 字符" if _md else ""))
         ocr_text = "\n\n".join(merged_text_parts)
         source_markdown = "\n\n".join(merged_md_parts)
@@ -176,8 +185,8 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
 
         # 自动检测实验类型
         exp_type = detect_experiment_type(ocr_text)
-        status.append(f"   🔬 检测实验类型：{exp_type}")
-        status.append("")
+        report(f"   🔬 检测实验类型：{exp_type}")
+        report("")
 
         # ── 第2步：获取模板（支持多文件，优先 .docx，PDF 自动转 docx）──
         if templates:
@@ -188,24 +197,24 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
                 key=lambda p: tplate_rank.get(Path(p).suffix.lower(), 9),
             )
             template_path = templates_sorted[0]
-            status.append(f"📋 正在解析上传的模板（{Path(template_path).name}）…")
+            report(f"📋 正在解析上传的模板（{Path(template_path).name}）…")
             # PDF 模板 → 转成可填充的 docx 线框（pdfplumber 提取表格+文本重建）
             if Path(template_path).suffix.lower() == ".pdf":
                 try:
                     template_path = convert_pdf_to_docx(
                         template_path, str(Path("temp") / f"_pdf_tpl_{os.getpid()}.docx")
                     )
-                    status.append(f"   🔁 PDF 模板已转成可编辑 docx 线框（{Path(template_path).name}）")
+                    report(f"   🔁 PDF 模板已转成可编辑 docx 线框（{Path(template_path).name}）")
                 except Exception as pe:
-                    status.append(f"   ⚠️ PDF 模板解析失败：{pe}")
+                    report(f"   ⚠️ PDF 模板解析失败：{pe}")
                     template_path = ""
             template_analysis = analyze_template(template_path) if template_path else {"total_paragraphs": 0, "total_tables": 0, "paragraphs": [], "tables": [], "sections_found": [], "placeholder_count": 0}
             t_summary = get_template_summary(template_analysis)
-            status.append(f"   ✓ {template_analysis['total_paragraphs']} 段落，{template_analysis['total_tables']} 表格")
+            report(f"   ✓ {template_analysis['total_paragraphs']} 段落，{template_analysis['total_tables']} 表格")
             if len(templates) > 1:
-                status.append(f"   ℹ️ 上传了 {len(templates)} 个模板，已选用：{Path(templates_sorted[0]).name}")
+                report(f"   ℹ️ 上传了 {len(templates)} 个模板，已选用：{Path(templates_sorted[0]).name}")
             if not template_path:
-                status.append("   ⚠️ 模板为空，回退使用内置模板")
+                report("   ⚠️ 模板为空，回退使用内置模板")
                 if Path(TEMPLATE_DIR / "内置实验报告模板.docx").exists():
                     template_path = str(TEMPLATE_DIR / "内置实验报告模板.docx")
                     template_analysis = analyze_template(template_path)
@@ -214,37 +223,37 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
             # 优先使用内置的成都大学模板（已优化、质量高）；不存在则回退到通用生成模板
             builtin = Path(TEMPLATE_DIR) / "内置实验报告模板.docx"
             if builtin.exists():
-                status.append("📋 使用内置系统模板（成都大学标准线框模板）…")
+                report("📋 使用内置系统模板（成都大学标准线框模板）…")
                 template_path = str(builtin)
                 # 自动校验内置模板是否已固化最新修复；未固化则就地烘焙
                 try:
                     from modules.template_fix import verify_template, rebake_template
                     _probs = verify_template(str(builtin))
                     if _probs:
-                        status.append(f"   🔧 内置模板有 {len(_probs)} 处未固化，正在自动烘焙…")
+                        report(f"   🔧 内置模板有 {len(_probs)} 处未固化，正在自动烘焙…")
                         rebake_template(str(builtin))
                         _probs2 = verify_template(str(builtin))
                         if _probs2:
-                            status.append(f"   ⚠️ 烘焙后仍有 {len(_probs2)} 处问题")
+                            report(f"   ⚠️ 烘焙后仍有 {len(_probs2)} 处问题")
                         else:
-                            status.append("   ✓ 模板已烘焙到最新版")
+                            report("   ✓ 模板已烘焙到最新版")
                 except Exception as _tfe:
-                    status.append(f"   ⚠️ 模板自检跳过：{_tfe}")
+                    report(f"   ⚠️ 模板自检跳过：{_tfe}")
             else:
-                status.append("📋 使用内置标准模板…")
+                report("📋 使用内置标准模板…")
                 tpl_bytes = build_standard_template(exp_type)
                 tpl_path = Path("temp") / "_builtin_template.docx"
                 tpl_path.write_bytes(tpl_bytes)
                 template_path = str(tpl_path)
             template_analysis = analyze_template(template_path)
             t_summary = get_template_summary(template_analysis)
-            status.append(f"   ✓ {template_analysis['total_paragraphs']} 段落，{template_analysis['total_tables']} 表格")
-        status.append("")
+            report(f"   ✓ {template_analysis['total_paragraphs']} 段落，{template_analysis['total_tables']} 表格")
+        report("")
 
         # ── 第3步：AI 填充 ──
-        status.append(f"🤖 正在调用 {model} 生成实验报告…")
+        report(f"🤖 正在调用 {model} 生成实验报告…")
         if requirement and requirement.strip():
-            status.append(f"   📌 附加要求：{requirement.strip()[:80]}")
+            report(f"   📌 附加要求：{requirement.strip()[:80]}")
         # 显式传入 UI 的 api_base/api_key（或 None → 按模型自动路由到对应 provider）
         filled = generate_report(
             ocr_text, ocr_tables, t_summary, model=model,
@@ -254,16 +263,16 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
         )
         sections = filled.get("sections", {})
         count = sum(1 for v in sections.values() if v and v.strip() and "[待补充]" not in v)
-        status.append(f"   ✓ AI 已填充 {count} 个章节")
-        status.append(f"   📝 模型：{filled.get('model_used', model)}")
+        report(f"   ✓ AI 已填充 {count} 个章节")
+        report(f"   📝 模型：{filled.get('model_used', model)}")
         if filled.get("notes"):
-            status.append(f"   ℹ️ {filled['notes'][:120]}")
-        status.append("")
+            report(f"   ℹ️ {filled['notes'][:120]}")
+        report("")
 
         # ── 关键兜底：AI 完全没填出任何章节 → 中止，不要产出空白模板副本 ──
         if count == 0:
             err_note = filled.get("notes") or "AI 未能生成内容"
-            status.append("🚫 未生成任何有效内容，已中止，避免输出空模板。")
+            report("🚫 未生成任何有效内容，已中止，避免输出空模板。")
             return (
                 gr.update(),
                 "❌ 生成失败：AI 没有返回内容",
@@ -272,7 +281,7 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
             )
 
         # ── 第4步：生成文档 ──
-        status.append("📝 正在生成最终文档…")
+        report("📝 正在生成最终文档…")
         manual_name = Path(manuals[0]).stem
         output_name = f"{manual_name}_实验报告"
 
@@ -283,9 +292,9 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
         )
         docx_path = result_paths.get("docx", "")
         if docx_path and Path(docx_path).exists():
-            status.append(f"   ✓ 文档已生成：{Path(docx_path).name}")
-            status.append("")
-            status.append("✅ 完成！点击下载按钮用 WPS/Office 打开微调后交作业。")
+            report(f"   ✓ 文档已生成：{Path(docx_path).name}")
+            report("")
+            report("✅ 完成！点击下载按钮用 WPS/Office 打开微调后交作业。")
             # 渲染真实 docx 内容（含表格结构）供网页预览
             try:
                 preview = render_docx(docx_path)
@@ -324,8 +333,8 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
 
     except Exception as e:
         import traceback
-        status.append(f"\n❌ 出错：{e}")
-        status.append(f"```\ntraceback.format_exc()[:600]```")
+        report(f"\n❌ 出错：{e}")
+        report(f"```\ntraceback.format_exc()[:600]```")
         err = f"*❌ 生成出错：{e}*"
         return gr.update(), "❌ 出现错误", err, "\n".join(status)
 
@@ -335,7 +344,8 @@ def refresh_history_ui():
     return history_mod.render_history_html()
 
 
-def composer_submit(message, template_file, api_key, api_base, model, use_builtin):
+def composer_submit(message, template_file, api_key, api_base, model, use_builtin,
+                    progress=gr.Progress()):
     """统一入口（DeepSeek-Harness 式单框）：
     · 带附件  → 走生成流程（附件 = 实验指导手册，可多选）
     · 不带附件 → 走对话修订（已生成过报告时，按文字要求修改并重新出稿）
@@ -370,18 +380,23 @@ def composer_submit(message, template_file, api_key, api_base, model, use_builti
             "、".join(Path(p).name for p in files),
         ))
         try:
+            def _on_p(msg):
+                # 实时进度：去掉前缀 emoji 更清爽，只留说明文本
+                progress(msg.replace("\n", " "))
             dl, dl_status, preview, log = process_files(
                 files, template_file, api_key, api_base, model, use_builtin,
                 requirement=text,
+                on_progress=_on_p,
             )
         except Exception as e:
             chat_mod._session.append(("ai", f"❌ 生成出错：{e}"))
             return chat_mod.render_chat_preview(chat_mod._session), _nochange, "❌ 出错", _nochange, _nochange
         if dl:
+            gr.Info(f"✅ 报告已生成！点「下载 .docx」保存")
             chat_mod._session.append(("ai", "✅ 报告已生成，可在上方预览；点「下载 .docx」保存。\n"
                                            "想改？在输入框继续提要求即可。"))
         else:
-            chat_mod._session.append(("ai", f"❌ 生成失败：{dl_status}"))
+            gr.Warning(f"❌ 生成失败：{dl_status[:120]}")
         return chat_mod.render_chat_preview(chat_mod._session), dl, dl_status, preview, log
 
     # ── B. 无文件且无文字 → 忽略 ──
@@ -1318,6 +1333,33 @@ a { color: var(--acc); }
   .pix-header .sub { font-size: 14px; }
   .gradio-container { padding: 0 10px 70px !important; }
 }
+
+/* ── 新手三步引导条 ── */
+.steps-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  margin: 4px 2px 10px;
+  padding: 8px 12px;
+  background: var(--bg1, #f6ecd2);
+  border: 2px solid var(--line, #c9b48e);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm, 2px 2px 0 rgba(58,42,26,.3));
+  font-family: var(--body, 'SimSun', serif);
+  font-size: 12.5px;
+  color: var(--ink2, #58432c);
+}
+.steps-bar .step { display: inline-flex; align-items: center; gap: 6px; }
+.steps-bar .step b {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 17px; height: 17px; border-radius: 50%;
+  background: var(--acc, #5b8c3e); color: #fff; font-size: 11px;
+  flex: 0 0 auto;
+}
+@media (max-width: 640px) {
+  .steps-bar { font-size: 11px; padding: 6px 10px; }
+}
 """
 
 
@@ -1386,6 +1428,15 @@ def build_ui():
         # ── 主题切换按钮（水阀门旋钮，gradio Button + js 回调）──
         theme_btn = gr.Button("☾", elem_id="themeBtn", variant="secondary")
 
+        # ── 新手三步引导条（一眼看懂的流程，取代藏在折叠区的说明）──
+        gr.HTML("""
+        <div class="steps-bar">
+            <span class="step"><b>1</b> 回形针上传实验指导书（PDF/Word/图片，可多选）</span>
+            <span class="step"><b>2</b> 可选：传老师模板，不传用内置模板</span>
+            <span class="step"><b>3</b> 回车 → 生成 → 下载 .docx</span>
+        </div>
+        """)
+
         # ══════════════════════════════════════════════
         #  主区（Codex 式）：输入框是视觉核心，结果区紧随其后
         # ══════════════════════════════════════════════
@@ -1436,7 +1487,8 @@ def build_ui():
         with gr.Column(elem_classes="chat-shell"):
             chat_display = gr.HTML(chat_mod.render_chat_preview([]))
 
-        with gr.Accordion("模型 / API", open=False):
+        with gr.Accordion("模型 / API", open=True):
+            gr.Markdown("**选一个模型；没填 Key 则用 `.env` 里的**（DeepSeek 官方 `deepseek-chat` 最省心）")
             with gr.Row():
                 model_sel = gr.Dropdown(
                     label="AI 模型",
