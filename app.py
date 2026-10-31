@@ -704,7 +704,10 @@ textarea:focus, input:focus {
 }
 
 /* ── 按钮：木框物品栏方块 ── */
-button:not(#themeBtn), .gradio-button, [type=button] {
+/* 注意：不要用 :not(#themeBtn)——选择器里带 id 会让特异性飙到 (1,0,1)，
+   压过 button.primary / .upload-button 等类规则，造成投放区被染成木按钮。
+   #themeBtn 自身用 id 选择器定义，天然优先级更高，无需在此排除。 */
+button, .gradio-button, [type=button] {
   font-family: var(--font) !important;
   font-size: 13px !important;
   font-weight: 600 !important;
@@ -723,7 +726,7 @@ button:not(#themeBtn), .gradio-button, [type=button] {
   position: relative;
   text-shadow: 1px 1px 0 rgba(0,0,0,.35);
 }
-button:not(#themeBtn):hover {
+button:hover, .gradio-button:hover {
   background: var(--wood-lt) !important;
   background-image: linear-gradient(180deg, #c99363, var(--wood-lt)) !important;
   transform: translate(1px,1px) !important;
@@ -731,7 +734,7 @@ button:not(#themeBtn):hover {
               inset 0 0 0 2px #d9a97a,
               inset 0 0 0 3px var(--wood-dk) !important;
 }
-button:not(#themeBtn):active {
+button:active, .gradio-button:active {
   transform: translate(2px,2px) !important;
   box-shadow: none !important;
 }
@@ -898,7 +901,8 @@ details > *:not(summary), .accordion > *:not(summary) {
   border: var(--px) dashed var(--line2) !important;
   min-height: 46px !important;
   display: flex; align-items: center; justify-content: center;
-  color: var(--dim) !important;
+  color: var(--ink) !important;
+  font-weight: 700 !important;
   font-family: var(--mono) !important;
   font-size: 15px !important;
   padding: 6px 10px !important;
@@ -917,7 +921,7 @@ details > *:not(summary), .accordion > *:not(summary) {
   background-image: none !important;
   box-shadow: none !important;
   border: none !important;
-  color: var(--dim) !important;
+  color: var(--ink) !important;
   font-family: var(--mono) !important;
   font-size: 15px !important;
 }
@@ -1360,6 +1364,114 @@ a { color: var(--acc); }
 @media (max-width: 640px) {
   .steps-bar { font-size: 11px; padding: 6px 10px; }
 }
+
+/* ══════════ 可读性修复：投放区 / 预览提示 / 勾选框 ══════════ */
+
+/* 1) 模板投放区：强制羊皮纸底 + 深字，避免被木按钮样式染成奶油字压木底 */
+#tplUpload,
+#tplUpload .upload-container,
+#tplUpload .upload-button,
+#tplUpload [data-testid="file-upload"],
+#tplUpload [data-testid="file"],
+#tplUpload [data-testid="file"] > div {
+  background: var(--bg1) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+#tplUpload, #tplUpload * {
+  color: var(--ink) !important;
+  font-family: var(--mono) !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  text-shadow: none !important;
+}
+#tplUpload .upload-container,
+#tplUpload [data-testid="file-upload"] {
+  border: var(--px) dashed var(--line2) !important;
+  min-height: 46px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+}
+#tplUpload .upload-container:hover,
+#tplUpload [data-testid="file-upload"]:hover {
+  background: var(--bg2) !important;
+  border-color: var(--acc) !important;
+}
+#tplUpload svg, #tplUpload [class*="icon"] {
+  color: var(--ink2) !important;
+  fill: var(--ink2) !important;
+}
+
+/* 2) 预览框提示文字：加深加粗，彻底解决浅字压浅底 */
+.preview-panel .pix-statusbar,
+.preview-panel .pix-statusbar * {
+  color: var(--ink) !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
+}
+.preview-panel .pix-statusbar {
+  padding: 14px 4px !important;
+  letter-spacing: .5px;
+}
+
+/* 3) 勾选框：像素风方块 + 明确的勾选/悬停/按下反馈 */
+input[type="checkbox"] {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  margin: 0 8px 0 0 !important;
+  border: var(--px) solid var(--wood-dk) !important;
+  border-radius: 0 !important;
+  background: var(--bg1) !important;
+  box-shadow: inset 2px 2px 0 rgba(0,0,0,.18) !important;
+  cursor: pointer !important;
+  position: relative !important;
+  flex: 0 0 auto !important;
+  transition: background .12s ease, border-color .12s ease,
+              box-shadow .12s ease, transform .08s ease !important;
+}
+input[type="checkbox"]:hover {
+  border-color: var(--acc) !important;
+  background: var(--bg2) !important;
+  box-shadow: inset 2px 2px 0 rgba(0,0,0,.18), 0 0 0 2px var(--acc-lt) !important;
+}
+input[type="checkbox"]:active { transform: scale(.88) !important; }
+input[type="checkbox"]:checked {
+  background: var(--acc) !important;
+  border-color: #2f5a1e !important;
+  box-shadow: inset 0 0 0 2px var(--acc-lt), 0 0 0 1px var(--wood-dk) !important;
+}
+input[type="checkbox"]:checked::after {
+  content: "✔";
+  position: absolute !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #fff !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  text-shadow: 1px 1px 0 rgba(0,0,0,.4) !important;
+}
+/* 勾选框旁的说明文字：深色、稍大、对齐方块 */
+#useBuiltin label,
+#useBuiltin label span,
+#useBuiltin > div {
+  color: var(--ink) !important;
+  font-family: var(--body) !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  align-items: center !important;
+  cursor: pointer !important;
+}
 """
 
 
@@ -1465,9 +1577,10 @@ def build_ui():
                     type="filepath",
                     height=64,
                     elem_classes="mini-upload",
+                    elem_id="tplUpload",
                 )
             with gr.Column(scale=1, min_width=130):
-                use_builtin = gr.Checkbox(label="用内置模板", value=True)
+                use_builtin = gr.Checkbox(label="用内置模板", value=True, elem_id="useBuiltin")
 
         # ── 结果区 ──
         with gr.Row(elem_classes="out-row"):
