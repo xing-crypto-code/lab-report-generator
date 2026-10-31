@@ -531,6 +531,14 @@ gradio-app {
   align-items: center !important;
 }
 
+/* gradio 自带一层 .main.fillable（padding 16/32、max-width 1280），
+   会把内容再往里缩一圈；这里交回 .gradio-container 的 padding 控制 */
+.gradio-container .main.fillable {
+  padding: 0 !important;
+  max-width: none !important;
+  width: 100% !important;
+}
+
 /* 让 gradio 原生组件跟随我们的中性色 */
 .gradio-container {
   --body-text-color: var(--app-fg);
@@ -871,7 +879,57 @@ input[type="checkbox"]:focus-visible {
   color: var(--app-fg) !important; cursor: pointer !important;
 }
 
-/* ─────────── 结果区 ─────────── */
+/* ─────────── 结果卡 ─────────── */
+#resultCard {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-card);
+  box-shadow: var(--app-shadow-sm);
+  overflow: hidden;
+  margin-top: 18px;
+}
+#resultHead {
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 10px 14px !important;
+  border-bottom: 1px solid var(--app-border);
+  margin: 0 !important;
+  background: var(--app-card);
+}
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--app-fg);
+  line-height: 1.4;
+}
+#dlBtn {
+  width: 100% !important;
+  justify-content: center !important;
+  font-size: 12.5px !important;
+  font-weight: 550 !important;
+  min-height: 32px !important;
+  padding: 5px 12px !important;
+}
+#dlStatus { padding: 8px 14px 0 !important; }
+#dlStatus p, #dlStatus .prose p {
+  font-size: 12.5px !important;
+  color: var(--app-fg-muted) !important;
+  margin: 0 !important;
+  line-height: 1.5 !important;
+}
+#resultCard .preview-panel {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  min-height: 148px;
+  padding: 0 !important;
+}
+#resultCard .preview-panel:has(.r-wrap) {
+  display: block !important;
+  padding: 12px !important;
+}
+
 .out-row { margin-top: 18px !important; gap: 16px !important; align-items: stretch !important; }
 .out-row .gradio-markdown {
   font-family: var(--app-font) !important;
@@ -1078,6 +1136,18 @@ hr { border: none !important; border-top: 1px solid var(--app-border) !important
   border: 3px solid transparent; background-clip: content-box;
 }
 *::-webkit-scrollbar-thumb:hover { background: var(--app-fg-muted); background-clip: content-box; }
+
+/* ─────────── Toast 提示 ─────────── */
+.toast-wrap { font-family: var(--app-font) !important; }
+.toast-body, .toast-item, .toast-wrap > div {
+  border-radius: var(--app-radius) !important;
+  border: 1px solid var(--app-border) !important;
+  background: var(--app-card) !important;
+  color: var(--app-fg) !important;
+  font-family: var(--app-font) !important;
+  font-size: 13px !important;
+  box-shadow: var(--app-shadow-md) !important;
+}
 
 /* ─────────── 应用外壳：侧栏 + 主区 ─────────── */
 #appShell {
@@ -1340,19 +1410,21 @@ def build_ui():
                     with gr.Column(scale=1, min_width=130):
                         use_builtin = gr.Checkbox(label="用内置模板", value=True, elem_id="useBuiltin")
 
-                # ── 结果区 ──
-                with gr.Row(elem_classes="out-row"):
-                    with gr.Column(scale=1, min_width=170):
-                        download_btn = gr.DownloadButton(
-                            "下载 .docx", variant="primary", interactive=True, visible=True,
-                            elem_classes="dl-btn",
-                        )
-                        download_status = gr.Markdown("生成后在此下载")
-                    with gr.Column(scale=4):
-                        preview_out = gr.HTML(
-                            '<div class="pix-statusbar">生成后在这里预览报告</div>',
-                            elem_classes="preview-panel",
-                        )
+                # ── 结果卡：标题 + 下载 + 预览 ──
+                with gr.Column(elem_id="resultCard"):
+                    with gr.Row(elem_id="resultHead"):
+                        with gr.Column(scale=1, min_width=120):
+                            gr.HTML('<div class="card-title">报告预览</div>')
+                        with gr.Column(scale=0, min_width=132):
+                            download_btn = gr.DownloadButton(
+                                "下载 .docx", variant="secondary", size="sm",
+                                interactive=True, visible=True, elem_id="dlBtn",
+                            )
+                    download_status = gr.Markdown("", elem_id="dlStatus")
+                    preview_out = gr.HTML(
+                        '<div class="pix-statusbar">生成后在这里预览报告</div>',
+                        elem_classes="preview-panel",
+                    )
 
                 # ── 对话流 ──
                 with gr.Column(elem_classes="chat-shell"):
