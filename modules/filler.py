@@ -152,6 +152,30 @@ def detect_experiment_type(ocr_text: str) -> str:
     return best if scores[best] > 0 else "物理实验"
 
 
+def _sections_from_template_summary(summary: str) -> list[str]:
+    """从模板摘要里抠出"识别到的章节"，当作本次要输出的键。
+
+    以前这里写死 5 个键（目的/仪器/原理/过程/小结），模板一旦多出「误差分析」
+    「思考题」这类栏位，模型也只回 5 栏，多出来的小节永远是空的。
+    """
+    m = re.search(r"识别到的章节[:：]\s*([^\n]+)", summary or "")
+    if not m:
+        return []
+    skip = ("课程名称", "实验名称", "教师评阅", "评阅", "班", "学号", "姓名",
+            "学院", "成绩", "实验日期", "指导教师")
+    out = []
+    for raw in re.split(r"[,，、]", m.group(1)):
+        name = re.sub(r"\s+", " ", raw).strip()
+        name = re.sub(r"[（(][^）)]*[)）]", "", name)      # 实验过程（可另附页）
+        name = re.sub(r"\s*(与建议|及建议|意见及建议).*$", "", name)
+        name = name.strip()
+        if not name or any(name.startswith(s) for s in skip):
+            continue
+        if name not in out:
+            out.append(name)
+    return out
+
+
 def generate_report(
     ocr_text: str,
     ocr_tables: list,
@@ -199,6 +223,10 @@ def generate_report(
     domain_codes = ["电路/电子实验", "物理实验"]
     domain_spec_block = DOMAIN_SPEC if experiment_type in domain_codes else ""
 
+    # 模板里真实存在的章节优先于实验类型的标准章节：
+    # 老师模板多出「误差分析」「思考题」时，要让模型照着模板的栏位写。
+    tpl_sections = _sections_from_template_summary(template_summary) or standard_sections
+
     # 构建系统 prompt（含知识库规范）
     system_prompt = f"""你是一位中国高校工科本科生，正在写自己刚做完的实验的实验报告。
 不是"撰写助手"，不追求华丽的排比句，只把做过的事老老实实写清楚。
@@ -212,7 +240,7 @@ def generate_report(
 6. 语言要像一个学生自己写的：具体、朴实、长短句错落，**不要有 AI 腔**
 
 ## 本次实验类型：{experiment_type}
-标准章节：{' → '.join(standard_sections)}
+标准章节：{' → '.join(tpl_sections)}
 特殊要求：{type_requirements}
 
 {ANTI_AI_STYLE}
@@ -271,6 +299,12 @@ def generate_report(
         if _md else ""
     )
 
+    # JSON 骨架按模板动态生成，模板有几栏就输出几栏
+    _skeleton = json.dumps(
+        {"sections": {n: "" for n in tpl_sections}, "notes": "补充说明（可空）"},
+        ensure_ascii=False, indent=2,
+    )
+
     user_prompt = f"""## 实验类型
 {experiment_type}
 
@@ -284,13 +318,10 @@ def generate_report(
 {chr(10).join(str(t) for t in ocr_tables) if ocr_tables else '（无表格数据）'}
 {_req_block}
 【模板章节对齐（硬性要求）】
-sections 的键**必须**取自上方"实验报告模板结构"里**实际出现**的章节名称，一个都不能多、一个都不能少。
-- 模板有"实验目的、实验仪器、实验原理、实验过程、实验小结" → 就只输出这 5 个键。
-- 模板有"实验步骤、实验数据、实验结果、实验结论" → 就只输出这 4 个键。
-- **绝对禁止**输出模板里没有的章节。特别注意：**不要自行添加"实验设计"、"思考题"、
-  "注意事项"、"误差分析"、"预习思考"这类章节**——除非模板结构里明确写了它们。
-  思考题/设计实验等内容如果模板没给位置，就写进"实验过程"的最后一段里，
-  而不是单独开一个新章节。
+sections 的键**只能**是这 {len(tpl_sections)} 个：「{'、'.join(tpl_sections)}」
+一个都不能多、一个都不能少，顺序也要一致。
+- **绝对禁止**输出上面没有的章节；模板没给位置的思考题/设计内容，写进最后一个正文段落里，
+  不要自己另开新章节。
 - 判断依据只有模板结构，不要依据指导书的章节数。
 
 【表格数据格式】凡涉及实验数据（真值表、测量数据表、误差表等），请把数据写成 Markdown 表格
@@ -302,16 +333,7 @@ sections 的键**必须**取自上方"实验报告模板结构"里**实际出现
 表格必须以"|"开头和结尾，第一行为表头，第二行为 ----- 分隔行。数据必须来自 OCR 识别内容，严禁编造。
 
 请按以下 JSON 格式返回填入内容（严格 JSON，不要输出 JSON 之外的文字）：
-{{
-  "sections": {{
-    "实验目的": "",
-    "实验仪器": "",
-    "实验原理": "",
-    "实验过程": "",
-    "实验小结": ""
-  }},
-  "notes": "补充说明（可空）"
-}}"""
+{_skeleton}"""
 
     api_kwargs = {
         "model": model,
