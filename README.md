@@ -9,6 +9,7 @@
 - 📷 **智能 OCR**：EasyOCR 中文识别 + 图像预处理（去噪/增强/二值化）
 - 🧠 **多模型支持**：硅基流动 SiliconFlow 11 款模型可选（DeepSeek V3/V4/Qwen/GLM）
 - 📚 **工科知识库**：6 大实验类型（物理/化学/电路/力学/光学/计算机）标准结构
+- 🗂️ **可扩展范例库**：把自己的范文/指导书丢进 `kb/`，生成时自动检索注入（检索用 BM25 + 字符二元组，纯标准库，不装额外依赖）
 - 📝 **格式稳定**：python-docx 保持原模板格式，宋体正文 + 黑体标题，不乱码
 - 🎨 **精致 UI**：Gradio 现代界面，支持内置标准模板
 - 🆓 **免费使用**：硅基流动新用户 14 元额度，够生成数百份报告
@@ -56,7 +57,9 @@ python app.py
 │   ├── template.py         # .docx 模板结构解析
 │   ├── filler.py           # AI 填充 + 多模型对比
 │   ├── knowledge.py        # 工科实验知识库 + 标准模板生成
+│   ├── retrieval.py        # 范例库检索（kb/ 入库 · 切块 · BM25）
 │   └── generator.py        # 文档生成（保持格式）
+├── kb/                     # 你的范例库：范文/ 指导书/ 规范/
 ├── templates/              # 内置模板目录
 ├── outputs/                # 生成结果
 └── libs/                   # pip --target 安装目录
@@ -72,6 +75,37 @@ python app.py
 | 力学实验 | 目的 → 公式推导 → 仪器 → 步骤 → 数据图表 → 误差 → 结论 |
 | 光学实验 | 目的 → 光路图 → 仪器 → 步骤 → 数据 → 处理 → 误差 |
 | 计算机实验 | 目的 → 环境 → 算法说明 → 步骤与代码 → 结果分析 → 总结 |
+
+## 🗂️ 用你自己的范文提升生成效果
+
+模型权重改不了，但**每次生成时检索几段本校的范文塞进 prompt**，效果差别很大。
+把文件按身份放好，跑一条命令建索引即可：
+
+```bash
+kb/范文/    ← 同学/学长写得不错的报告（最值钱，决定"好报告长什么样"）
+kb/指导书/  ← 课程实验指导书、讲义（实验内容以此为准）
+kb/规范/    ← 写作规范、评分标准
+kb/草稿/    ← 自己以前的稿子：默认不参与检索，KB_DRAFTS=1 才放行
+
+python -m modules.retrieval ingest     # 增量入库
+python -m modules.retrieval stats -v   # 看看库里有啥（逐份列出分类）
+python -m modules.retrieval search "霍尔效应 螺线管 磁场" -k 3   # 验证检索效果
+```
+
+仓库是公开的，入库前先清个人信息（姓名、学号、教师名）：
+
+```bash
+python scripts/clean_pii.py scan 张三 李四        # 体检
+python scripts/clean_pii.py scrub 王老师 --teacher  # 清理并复核
+```
+
+生成时会自动检索 3 段最相关的片段（限 1500 字）注入 system prompt，
+并明确要求**只学写法、不得抄用范例里的数据**。没有入库时整个功能静默跳过，不影响原有流程。
+
+可调环境变量：`KB_ENABLE=0` 关掉检索｜`KB_TOP_K` 片段数｜`KB_MAX_CHARS` 字数上限。
+PDF 需要 `pymupdf`（`pip install pymupdf`），扫描件请先 OCR。
+
+细节见 [docs/知识库使用指南.md](docs/知识库使用指南.md)。
 
 ## 🤖 可用模型
 

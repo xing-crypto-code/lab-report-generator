@@ -230,6 +230,31 @@ def generate_report(
 - **不要整段照抄指导书**：各栏必须收窄到本次实际用到的器件/电路/步骤
 - **不要出现上方"AI 腔"里列出的任何一个套话句式**"""
 
+    # ── 本课程参考范例（kb/ 知识库，可选）──────────────────────────────
+    # 库里没东西、或检索出错时静默跳过——知识库坏了不能拖垮生成。
+    if os.getenv("KB_ENABLE", "1").lower() not in ("0", "false", "off", ""):
+        try:
+            from modules.retrieval import build_context
+            _kb_block = build_context(
+                ocr_text,
+                exp_type=experiment_type,
+                k=int(os.getenv("KB_TOP_K", "3")),
+                max_chars=int(os.getenv("KB_MAX_CHARS", "1500")),
+            )
+        except Exception as _e:
+            print(f"[retrieval] 跳过知识库检索：{type(_e).__name__}: {_e}")
+            _kb_block = ""
+        if _kb_block:
+            system_prompt += f"""
+
+## 本课程参考范例（只学写法，不抄内容）
+以下是本校本课程往届报告的片段，仅用于模仿**文风、段落详略、公式与表格的呈现方式**。
+⚠️ 范例中的实验数据、器件型号、数值结果一律不得写入本次报告——本次报告的每个数字
+都必须来自上面的 OCR 原文；范例与指导书冲突时，以指导书为准。
+
+{_kb_block}
+"""
+
     # 构建 user prompt
     _req = (requirement or "").strip()
     _req_block = (

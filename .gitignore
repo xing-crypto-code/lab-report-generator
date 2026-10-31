@@ -28,6 +28,10 @@ libs/
 # 模板备份（rebake 自动生成，含旧版模板）
 templates/*.bak
 
+# 知识库索引（由 kb/ 里的文件生成，可随时重建）
+kb/index.sqlite
+kb/index.sqlite-journal
+
 # 渲染/调试产物
 screenshots/dom.txt
 
