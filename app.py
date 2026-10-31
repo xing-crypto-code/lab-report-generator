@@ -455,228 +455,118 @@ def _build_preview(sections, analysis) -> str:
 # ── 像素风 / 精简终端风（星露谷式像素字体 + 亮/暗双主题一键切换）──
 CSS = r"""
 /* ═══════════════════════════════════════════════════════════
-   像素沙盒风 · PIXEL SANDBOX
-   参考《我的世界》方块描边 + 《饥荒》羊皮纸木纹 + 《星露谷》暖色物品栏
-   双主题：白天草原（亮） / 夜晚洞穴（暗）
+   实验报告工坊 · 界面样式
+   设计语言：中性极简（参考 shadcn/ui · UI-TARS Desktop）
+   —— 纯白底、近黑主按钮、1px 细边、10px 圆角、系统字体
+   双主题：亮色（默认） / 暗色（.data-ui-theme="dark"）
    ═══════════════════════════════════════════════════════════ */
 
-/* ── 白天草原（默认）── */
+/* ─────────── 设计令牌 ─────────── */
 :root {
-  --bg0: #4e6b42;          /* 草地底（加深，让前景卡片/文字更突出） */
-  --bg1: #fdf6e8;          /* 羊皮纸卡片（提亮，墨字更清晰） */
-  --bg2: #f0e2c4;          /* 深羊皮纸 / hover */
-  --wood: #8b5e3c;         /* 木框 */
-  --wood-dk: #3f250f;      /* 木框暗部（加深，描边更分明） */
-  --wood-lt: #c58f58;      /* 木框亮部（提亮） */
-  --stone: #9a9a94;        /* 石质 */
-  --stone-dk: #5e5e58;
-  --line: #cbb48c;         /* 常规描边 */
-  --line2: #7a3512;        /* 强调描边（加深，更醒目） */
-  --ink: #1f170e;          /* 正文墨色（近黑，最强对比） */
-  --ink2: #443522;         /* 二级文字 */
-  --dim: #55442c;          /* 占位符/弱文字（加深，可读性↑） */
-  --acc: #4a732f;          /* 主色 苔绿（确认/生成） */
-  --acc-lt: #68983f;
-  --acc2: #c05f17;         /* 副色 琥珀（加深） */
-  --gold: #c99712;         /* 金币黄（加深） */
-  --red: #9c221b;
-  --blue: #2c689b;
-  --shadow: 4px 4px 0 0 rgba(24,16,8,.38);
-  --shadow-sm: 2px 2px 0 0 rgba(24,16,8,.38);
-  --font: 'Pixelify Sans', 'Silkscreen', 'SimSun', '宋体', monospace;
-  --body: 'SimSun', '宋体', 'Microsoft YaHei', serif;
-  --mono: 'VT323', 'Courier New', monospace;
-  --px: 2px;
+  --app-bg:            #ffffff;
+  --app-bg-subtle:     #fafafa;
+  --app-fg:            #0a0a0a;
+  --app-fg-muted:      #737373;
+  --app-card:          #ffffff;
+  --app-muted:         #f5f5f5;
+  --app-muted-hover:   #ededed;
+  --app-border:        #e5e5e5;
+  --app-border-strong: #d4d4d4;
+  --app-primary:       #171717;
+  --app-primary-fg:    #fafafa;
+  --app-primary-hover: #262626;
+  --app-accent:        #2563eb;   /* 仅用于链接/强调，不抢主色 */
+  --app-danger:        #dc2626;
+  --app-success:       #16a34a;
+  --app-ring:          rgba(23,23,23,.16);
+  --app-radius:        10px;
+  --app-radius-lg:     14px;
+  --app-shadow-xs:     0 1px 2px rgba(0,0,0,.04);
+  --app-shadow-sm:     0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.04);
+  --app-shadow-md:     0 4px 12px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.04);
+  --app-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --app-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
-/* ── 夜晚洞穴（暗）── */
 :root[data-ui-theme="dark"] {
-  --bg0: #141a2a;
-  --bg1: #2f2a3e;          /* 卡片（稍提亮，与纯背景分层） */
-  --bg2: #3d334e;
-  --wood: #4a3226;
-  --wood-dk: #201109;      /* 暗部更深，描边更清 */
-  --wood-lt: #7a5538;      /* 亮部提亮 */
-  --stone: #4a4a55;
-  --stone-dk: #24242c;
-  --line: #4a3d52;
-  --line2: #a8814d;        /* 强调描边提亮 */
-  --ink: #f7efdf;          /* 正文提亮，对比最强 */
-  --ink2: #e0d3bb;         /* 二级文字提亮 */
-  --dim: #b4a488;          /* 弱文字提亮（暗底上可读） */
-  --acc: #72b34e;
-  --acc-lt: #93cf70;
-  --acc2: #eea04a;
-  --gold: #f4cc5e;
-  --red: #e05f50;
-  --blue: #6ea3e0;
-  --shadow: 4px 4px 0 0 rgba(0,0,0,.6);
-  --shadow-sm: 2px 2px 0 0 rgba(0,0,0,.6);
+  --app-bg:            #0a0a0a;
+  --app-bg-subtle:     #111111;
+  --app-fg:            #fafafa;
+  --app-fg-muted:      #a3a3a3;
+  --app-card:          #171717;
+  --app-muted:         #262626;
+  --app-muted-hover:   #303030;
+  --app-border:        #262626;
+  --app-border-strong: #404040;
+  --app-primary:       #fafafa;
+  --app-primary-fg:    #171717;
+  --app-primary-hover: #e5e5e5;
+  --app-accent:        #60a5fa;
+  --app-danger:        #f87171;
+  --app-success:       #4ade80;
+  --app-ring:          rgba(250,250,250,.22);
+  --app-shadow-xs:     0 1px 2px rgba(0,0,0,.5);
+  --app-shadow-sm:     0 1px 2px rgba(0,0,0,.6);
+  --app-shadow-md:     0 4px 12px rgba(0,0,0,.6);
 }
 
-/* ── 基础 ── */
-@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=VT323&display=swap');
-
+/* ─────────── 基础 ─────────── */
 html, body, .gradio-container {
-  background: var(--bg0) !important;
-  color: var(--ink);
-  font-family: var(--body) !important;
-  -webkit-font-smoothing: none;
-  image-rendering: pixelated;
-}
-/* 草地/洞穴纹理（像素噪点 + 明暗斑块，模拟材质包） */
-body::before {
-  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background-image:
-    radial-gradient(circle at 12% 18%, rgba(255,255,255,.10) 0 2px, transparent 2px),
-    radial-gradient(circle at 38% 62%, rgba(0,0,0,.10) 0 2px, transparent 2px),
-    radial-gradient(circle at 71% 33%, rgba(255,255,255,.08) 0 2px, transparent 2px),
-    radial-gradient(circle at 88% 78%, rgba(0,0,0,.08) 0 2px, transparent 2px),
-    linear-gradient(45deg, rgba(255,255,255,.045) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.045) 75%),
-    linear-gradient(45deg, rgba(0,0,0,.045) 25%, transparent 25%, transparent 75%, rgba(0,0,0,.045) 75%);
-  background-size: 120px 120px, 160px 160px, 200px 200px, 240px 240px, 10px 10px, 10px 10px;
-  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 5px 5px;
-}
-:root[data-ui-theme="dark"] body::before {
-  background-image:
-    radial-gradient(1px 1px at 20px 30px, rgba(255,220,150,.22), transparent),
-    radial-gradient(1px 1px at 110px 90px, rgba(255,220,150,.14), transparent),
-    radial-gradient(1.4px 1.4px at 220px 160px, rgba(255,220,150,.18), transparent),
-    radial-gradient(1px 1px at 330px 60px, rgba(255,220,150,.12), transparent),
-    linear-gradient(45deg, rgba(0,0,0,.10) 25%, transparent 25%, transparent 75%, rgba(0,0,0,.10) 75%);
-  background-size: 400px 240px, 500px 300px, 600px 360px, 700px 420px, 10px 10px;
+  background: var(--app-bg) !important;
+  color: var(--app-fg);
+  font-family: var(--app-font) !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
+/* gradio 会按系统深色模式给 body 加 .dark，并在 gradio-app 上刷深色底；
+   本应用主题由 html[data-ui-theme] 控制，这里统一压平，避免出现深色"边框沟" */
+body.dark, html.dark { background: var(--app-bg) !important; }
+gradio-app {
+  background: var(--app-bg) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+
+/* 让 gradio 原生组件跟随我们的中性色 */
 .gradio-container {
-  max-width: 940px !important;
+  --body-text-color: var(--app-fg);
+  --body-text-color-subdued: var(--app-fg-muted);
+  --background-fill-primary: var(--app-bg);
+  --background-fill-secondary: var(--app-muted);
+  --block-background-fill: var(--app-card);
+  --block-border-color: var(--app-border);
+  --block-label-text-color: var(--app-fg);
+  --block-title-text-color: var(--app-fg);
+  --border-color-primary: var(--app-border);
+  --input-background-fill: var(--app-bg);
+  --input-border-color: var(--app-border);
+  --input-placeholder-color: var(--app-fg-muted);
+  --button-primary-background-fill: var(--app-primary);
+  --button-primary-background-fill-hover: var(--app-primary-hover);
+  --button-primary-text-color: var(--app-primary-fg);
+  --button-primary-border-color: var(--app-primary);
+  --button-secondary-background-fill: var(--app-bg);
+  --button-secondary-background-fill-hover: var(--app-muted);
+  --button-secondary-text-color: var(--app-fg);
+  --button-secondary-border-color: var(--app-border);
+  --link-text-color: var(--app-accent);
+  --color-accent: var(--app-primary);
+
+  max-width: 1180px !important;
+  width: 100% !important;
   margin: 0 auto !important;
-  padding: 0 18px 90px !important;
+  padding: 0 24px 56px !important;
   font-size: 14px;
+  line-height: 1.6;
 }
 
-/* ── 顶栏：木牌招牌 ── */
-.pix-header {
-  position: relative;
-  margin: 26px 0 22px;
-  padding: 18px 22px 16px;
-  background: var(--wood);
-  background-image:
-    repeating-linear-gradient(90deg, rgba(0,0,0,.10) 0 2px, transparent 2px 6px),
-    linear-gradient(180deg, var(--wood-lt), var(--wood));
-  border: var(--px) solid var(--wood-dk);
-  box-shadow: var(--shadow), inset 0 0 0 2px var(--wood-lt);
-  display: block;
-}
-.pix-header::after {
-  /* 木牌四角钉子 */
-  content: ""; position: absolute; inset: 6px;
-  border: 1px dashed rgba(255,255,255,.12);
-  pointer-events: none;
-}
-.pix-header h1 {
-  font-family: var(--font);
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  color: #fdf3d8;
-  margin: 0 0 6px;
-  text-shadow: 2px 2px 0 var(--wood-dk);
-}
-.pix-header .sub {
-  font-family: var(--mono);
-  font-size: 16px;
-  color: #e8d3ac;
-  margin: 0;
-  letter-spacing: .5px;
-}
-.pix-header .pix-dot { color: var(--gold); margin: 0 6px; }
-.pix-caret { display: none; }
-
-/* ── 主题切换：水阀门旋钮（点击旋转 180°）── */
-#themeBtn {
-  position: fixed !important;
-  top: 16px; right: 18px; z-index: 60;
-  width: 46px !important; height: 46px;
-  min-width: 46px !important; padding: 0 !important;
-  display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(circle at 34% 28%, var(--wood-lt), var(--wood) 68%) !important;
-  color: #f7ecd2 !important;
-  border: var(--px) solid var(--wood-dk) !important;
-  border-radius: 999px !important;
-  box-shadow: var(--shadow-sm), inset -2px -2px 0 rgba(0,0,0,.28),
-              inset 2px 2px 0 rgba(255,255,255,.28) !important;
-  cursor: pointer;
-  overflow: visible !important;
-  transition: transform .45s cubic-bezier(.34,1.56,.64,1),
-              background-color .2s, box-shadow .2s !important;
-}
-/* 阀门外圈：六个螺栓（用伪元素 + conic 渐变实现，纯 CSS） */
-#themeBtn::before {
-  content: "";
-  position: absolute; inset: -3px;
-  border-radius: 999px;
-  background:
-    conic-gradient(from 0deg,
-      var(--stone) 0 10deg, transparent 10deg 60deg,
-      var(--stone) 60deg 70deg, transparent 70deg 120deg,
-      var(--stone) 120deg 130deg, transparent 130deg 180deg,
-      var(--stone) 180deg 190deg, transparent 190deg 240deg,
-      var(--stone) 240deg 250deg, transparent 250deg 300deg,
-      var(--stone) 300deg 310deg, transparent 310deg 360deg);
-  z-index: -1; opacity: .9;
-  transition: inherit;
-}
-/* 阀门手柄：中间一道横杠 */
-#themeBtn::after {
-  content: "";
-  position: absolute;
-  width: 26px; height: 5px;
-  background: var(--wood-dk);
-  border-radius: 1px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
-  pointer-events: none;
-  transition: inherit;
-}
-/* 图标压在十字中间 */
-#themeBtn > span { position: relative; z-index: 2; font-size: 15px !important; }
-#themeBtn:hover {
-  background: radial-gradient(circle at 34% 28%, #c99363, var(--wood-lt) 70%) !important;
-  box-shadow: var(--shadow), inset -2px -2px 0 rgba(0,0,0,.28) !important;
-}
-/* 旋转动效：由 JS 添加 .turned 类，阀芯转 180° */
-#themeBtn.turned,
-#themeBtn.turned::before,
-#themeBtn.turned::after {
-  transform: rotate(180deg);
-}
-#themeBtn.turned::after { transform: rotate(90deg); }
-
-/* ══════════ 统一木框（复用到所有功能块）══════════ */
-/* 用法：给容器加 .wood-frame 类，即获得一致的木沿质感 */
-.wood-frame,
-#composerBox,
-.composer-tools .mini-upload,
-details, .accordion, [data-testid="accordion"],
-.out-row .dl-btn,
-.preview-panel {
-  border: var(--px) solid var(--wood-dk) !important;
-  border-radius: 0 !important;
-  background: var(--bg1) !important;
-  box-shadow: var(--shadow),
-              inset 0 0 0 3px var(--wood-lt),
-              inset 0 0 0 5px #7a5232,
-              inset 0 0 0 6px var(--bg2) !important;
-  transition: none !important;
-}
-/* 折叠面板顶部留出木沿，标题栏内缩 */
-details, .accordion, [data-testid="accordion"] {
-  padding: 6px !important;
-  overflow: hidden;
-}
-details > *:not(summary), .accordion > *:not(summary) { margin-top: 0 !important; }
-
-/* ── 通用块：去掉容器，靠组件自身质感 ── */
-.block, .form, .gr-panel, .panel, .gradio-container .block {
+/* 去掉 gradio 默认的块状容器外观，交给组件自己 */
+.block, .form, .gr-panel, .panel, .gradio-container .block,
+.gradio-container .form {
   background: transparent !important;
   border: none !important;
   border-radius: 0 !important;
@@ -684,94 +574,141 @@ details > *:not(summary), .accordion > *:not(summary) { margin-top: 0 !important
   padding: 0 !important;
 }
 
-/* ── 输入框：羊皮纸卷 ── */
-textarea, input[type=text], input[type=password], input[type=email],
-.gradio-container input, .gradio-container textarea, .gradio-container select {
-  background: var(--bg1) !important;
-  border: var(--px) solid var(--line2) !important;
-  border-radius: 0 !important;
-  color: var(--ink) !important;
-  font-family: var(--body) !important;
-  font-size: 14px !important;
-  padding: 9px 11px !important;
-  box-shadow: inset 2px 2px 0 rgba(0,0,0,.10) !important;
-  transition: none !important;
+/* ─────────── 顶栏 ─────────── */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 2px 18px;
+  border-bottom: 1px solid var(--app-border);
+  margin-bottom: 22px;
 }
-textarea:focus, input:focus {
-  border-color: var(--acc) !important;
-  box-shadow: inset 2px 2px 0 rgba(0,0,0,.10), 0 0 0 2px var(--acc-lt) !important;
-  outline: none !important;
+.app-header .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.app-header .brand-mark {
+  width: 34px; height: 34px; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--app-primary); color: var(--app-primary-fg);
+  border-radius: var(--app-radius);
+  font-size: 15px; font-weight: 700;
+}
+.app-header h1 {
+  font-size: 17px; font-weight: 650; letter-spacing: -.01em;
+  margin: 0; color: var(--app-fg); line-height: 1.25;
+}
+.app-header .brand-text p {
+  margin: 2px 0 0; font-size: 12.5px; color: var(--app-fg-muted); line-height: 1.3;
+}
+.app-header .pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; font-size: 12px; color: var(--app-fg-muted);
+  background: var(--app-muted); border: 1px solid var(--app-border);
+  border-radius: 999px; white-space: nowrap;
+}
+.app-header .pill b { color: var(--app-fg); font-weight: 600; }
+
+/* ─────────── 三步提示条 ─────────── */
+.steps-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px;
+  padding: 11px 14px; margin: 0 0 18px;
+  background: var(--app-bg-subtle); border: 1px solid var(--app-border);
+  border-radius: var(--app-radius); font-size: 12.5px; color: var(--app-fg-muted);
+}
+.steps-bar .step { display: inline-flex; align-items: center; gap: 7px; }
+.steps-bar .step b {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; flex: 0 0 auto;
+  background: var(--app-fg); color: var(--app-bg);
+  border-radius: 999px; font-size: 11px; font-weight: 700;
 }
 
-/* ── 按钮：木框物品栏方块 ── */
-/* 注意：不要用 :not(#themeBtn)——选择器里带 id 会让特异性飙到 (1,0,1)，
-   压过 button.primary / .upload-button 等类规则，造成投放区被染成木按钮。
-   #themeBtn 自身用 id 选择器定义，天然优先级更高，无需在此排除。 */
+/* ─────────── 按钮 ─────────── */
 button, .gradio-button, [type=button] {
-  font-family: var(--font) !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  letter-spacing: .5px !important;
-  text-transform: none !important;
-  border-radius: 0 !important;
-  border: var(--px) solid var(--wood-dk) !important;
-  background: var(--wood) !important;
-  background-image: linear-gradient(180deg, var(--wood-lt), var(--wood)) !important;
-  color: #fdf3d8 !important;
-  box-shadow: var(--shadow-sm),
-              inset 0 0 0 2px var(--wood-lt),
-              inset 0 0 0 3px var(--wood-dk) !important;
-  padding: 9px 18px !important;
-  transition: none !important;
-  position: relative;
-  text-shadow: 1px 1px 0 rgba(0,0,0,.35);
+  font-family: var(--app-font) !important;
+  font-size: 13.5px !important;
+  font-weight: 550 !important;
+  letter-spacing: 0 !important;
+  border-radius: var(--app-radius) !important;
+  border: 1px solid var(--app-border) !important;
+  background: var(--app-card) !important;
+  background-image: none !important;
+  color: var(--app-fg) !important;
+  box-shadow: var(--app-shadow-xs) !important;
+  padding: 8px 14px !important;
+  min-height: 36px;
+  transition: background-color .15s ease, border-color .15s ease,
+              box-shadow .15s ease, color .15s ease !important;
+  text-shadow: none !important;
 }
 button:hover, .gradio-button:hover {
-  background: var(--wood-lt) !important;
-  background-image: linear-gradient(180deg, #c99363, var(--wood-lt)) !important;
-  transform: translate(1px,1px) !important;
-  box-shadow: 1px 1px 0 0 rgba(58,42,26,.30),
-              inset 0 0 0 2px #d9a97a,
-              inset 0 0 0 3px var(--wood-dk) !important;
+  background: var(--app-muted) !important;
+  border-color: var(--app-border-strong) !important;
 }
-button:active, .gradio-button:active {
-  transform: translate(2px,2px) !important;
-  box-shadow: none !important;
-}
-/* 主按钮：苔绿木框（确认/合成） */
-button.primary {
-  background: var(--acc) !important;
-  background-image: linear-gradient(180deg, var(--acc-lt), var(--acc)) !important;
-  color: #fff !important;
-  border-color: #2f5a1e !important;
-  box-shadow: var(--shadow-sm),
-              inset 0 0 0 2px #8ecb5e,
-              inset 0 0 0 3px #2f5a1e !important;
-  text-shadow: 1px 1px 0 rgba(0,0,0,.35);
-}
-button.primary:hover {
-  background-image: linear-gradient(180deg, #8ecb5e, var(--acc-lt)) !important;
-  box-shadow: 1px 1px 0 0 rgba(58,42,26,.30),
-              inset 0 0 0 2px #a4d96a,
-              inset 0 0 0 3px #2f5a1e !important;
+button:active, .gradio-button:active { transform: none !important; }
+button:focus-visible, .gradio-button:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 3px var(--app-ring) !important;
 }
 
-/* ── 主输入框 composer：木框工作台 ── */
-#composerBox {
-  border: var(--px) solid var(--wood-dk) !important;
-  border-radius: 0 !important;
-  background: var(--bg1) !important;
-  background-image:
-    repeating-linear-gradient(90deg, rgba(92,58,33,.045) 0 2px, transparent 2px 7px) !important;
-  box-shadow: var(--shadow),
-              inset 0 0 0 3px var(--wood-lt),
-              inset 0 0 0 5px #7a5232,
-              inset 0 0 0 6px var(--bg2) !important;
-  padding: 12px !important;
-  transition: none !important;
+/* 主按钮：近黑填充 */
+button.primary, .gradio-button.primary, button[variant="primary"] {
+  background: var(--app-primary) !important;
+  border-color: var(--app-primary) !important;
+  color: var(--app-primary-fg) !important;
+  box-shadow: var(--app-shadow-sm) !important;
 }
-/* 内部容器全部继承羊皮纸底，避免任何一格透出深色/绿色 */
-#composerBox,
+button.primary:hover, .gradio-button.primary:hover {
+  background: var(--app-primary-hover) !important;
+  border-color: var(--app-primary-hover) !important;
+}
+button.primary:disabled {
+  opacity: .45 !important;
+}
+
+/* 下载按钮占满卡片宽度 */
+.out-row .dl-btn {
+  width: 100% !important;
+  max-width: 100% !important;
+  white-space: nowrap;
+  justify-content: center !important;
+}
+
+/* ─────────── 输入框 / 文本域 ─────────── */
+textarea, input[type=text], input[type=password], input[type=email], input[type=number],
+.gradio-container input, .gradio-container textarea, .gradio-container select {
+  background: var(--app-bg) !important;
+  border: 1px solid var(--app-border) !important;
+  border-radius: var(--app-radius) !important;
+  color: var(--app-fg) !important;
+  font-family: var(--app-font) !important;
+  font-size: 14px !important;
+  padding: 9px 12px !important;
+  box-shadow: none !important;
+  transition: border-color .15s ease, box-shadow .15s ease !important;
+}
+textarea:focus, input:focus {
+  border-color: var(--app-border-strong) !important;
+  box-shadow: 0 0 0 3px var(--app-ring) !important;
+  outline: none !important;
+}
+::placeholder { color: var(--app-fg-muted) !important; opacity: 1; }
+
+/* ─────────── Composer（主输入区）─────────── */
+#composerBox {
+  border: 1px solid var(--app-border) !important;
+  border-radius: var(--app-radius-lg) !important;
+  background: var(--app-card) !important;
+  background-color: var(--app-card) !important;
+  background-image: none !important;
+  box-shadow: var(--app-shadow-sm) !important;
+  padding: 6px 8px 8px !important;
+  transition: border-color .15s ease, box-shadow .15s ease !important;
+}
+.gradio-container #composerBox { background-color: var(--app-card) !important; }
+#composerBox:focus-within {
+  border-color: var(--app-border-strong) !important;
+  box-shadow: 0 0 0 3px var(--app-ring), var(--app-shadow-sm) !important;
+}
 #composerBox .form,
 #composerBox .full-container,
 #composerBox .input-container,
@@ -779,714 +716,398 @@ button.primary:hover {
 #composerBox .input-row,
 #composerBox > div,
 #composerBox > div > div {
-  background-color: var(--bg1) !important;
+  background-color: transparent !important;
   background-image: none !important;
 }
-/* 只有上传按钮保持隐藏，别处的 hidden 类不动 */
 #composerBox .upload-container.hidden { display: none !important; }
-#composerBox .upload-container {
-  border: none !important;
-  background: transparent !important;
-}
-/* 让文本域铺满，右侧不留黑边 */
-#composerBox .input-row { align-items: stretch !important; gap: 6px !important; }
+#composerBox .input-row { align-items: flex-end !important; gap: 6px !important; }
 #composerBox .input-wrapper { flex: 1 1 auto !important; min-width: 0 !important; }
 #composerBox textarea {
   width: 100% !important;
-  min-height: 52px !important;
-}
-#composerBox textarea, #composerBox input {
-  font-family: var(--body) !important;
-  font-size: 14.5px !important;
-  line-height: 1.7 !important;
+  min-height: 54px !important;
   border: none !important;
-  background: var(--bg1) !important;
+  background: transparent !important;
   box-shadow: none !important;
-  color: var(--ink) !important;
-  padding: 6px 8px !important;
-}
-#composerBox textarea::placeholder, #composerBox input::placeholder {
-  color: var(--dim) !important;
-  font-family: var(--mono) !important;
-  font-size: 15px !important;
+  padding: 8px 8px !important;
+  font-size: 14px !important;
+  line-height: 1.65 !important;
+  color: var(--app-fg) !important;
 }
 #composerBox textarea:focus { box-shadow: none !important; }
+#composerBox textarea::placeholder { color: var(--app-fg-muted) !important; }
 
-/* 发送按钮：绿色宝石圆钮 */
+/* 附件按钮：幽灵按钮 */
+#composerBox button[data-testid="upload-button"],
+#composerBox button.icon-button {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--app-radius) !important;
+  color: var(--app-fg-muted) !important;
+  width: 34px !important; min-width: 34px !important;
+  height: 34px !important; padding: 0 !important;
+  box-shadow: none !important;
+  margin-bottom: 2px;
+}
+#composerBox button[data-testid="upload-button"]:hover,
+#composerBox button.icon-button:hover {
+  background: var(--app-muted) !important;
+  color: var(--app-fg) !important;
+}
+
+/* 发送按钮：主色圆形 */
 #composerBox button.submit-button, button.submit-button {
-  border-radius: 0 !important;
-  width: 34px !important; min-width: 34px !important; height: 34px !important;
-  padding: 0 !important;
-  background: var(--acc) !important;
-  background-image: radial-gradient(circle at 32% 28%, #a4d96a, var(--acc) 70%) !important;
-  color: #fff !important;
-  border: var(--px) solid #2f5a1e !important;
-  box-shadow: var(--shadow-sm), inset -2px -2px 0 rgba(0,0,0,.25) !important;
+  width: 34px !important; min-width: 34px !important;
+  height: 34px !important; padding: 0 !important;
+  border-radius: 999px !important;
+  background: var(--app-primary) !important;
+  border: 1px solid var(--app-primary) !important;
+  color: var(--app-primary-fg) !important;
+  box-shadow: var(--app-shadow-sm) !important;
+  margin-bottom: 2px;
 }
 #composerBox button.submit-button:hover, button.submit-button:hover {
-  background: var(--acc-lt) !important;
-  transform: translate(1px,1px) !important;
+  background: var(--app-primary-hover) !important;
+  border-color: var(--app-primary-hover) !important;
 }
-#composerBox button.submit-button svg { color: #fff !important; fill: #fff !important; }
+#composerBox button.submit-button svg { color: var(--app-primary-fg) !important; }
 
-/* 附件按钮：羊皮纸小方块 */
-#composerBox button.icon-button, button.icon-button {
-  background: var(--bg2) !important;
-  border: var(--px) solid var(--line2) !important;
-  box-shadow: inset -1px -1px 0 rgba(0,0,0,.15) !important;
-  color: var(--ink2) !important;
-  width: 34px !important; min-width: 34px !important; height: 34px !important;
-  padding: 0 !important;
-  border-radius: 0 !important;
-}
-#composerBox button.icon-button:hover, button.icon-button:hover {
-  background: var(--gold) !important;
-  color: var(--ink) !important;
-}
-
-/* 折叠面板：木框在外，标题栏内缩 */
-details, .accordion, [data-testid="accordion"] {
-  padding: 7px !important;
+/* ─────────── 模板上传 ─────────── */
+.composer-tools { margin-top: 12px; gap: 16px !important; align-items: flex-start !important; }
+#tplUpload {
+  border: 1px solid var(--app-border) !important;
+  border-radius: var(--app-radius) !important;
+  background: var(--app-bg) !important;
+  background-image: none !important;
+  box-shadow: none !important;
   overflow: hidden;
-}
-.accordion-header, .category, [data-testid="accordion"] summary {
-  font-family: var(--font) !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  letter-spacing: .5px !important;
-  color: var(--ink) !important;
-  background: var(--bg2) !important;
-  padding: 10px 14px !important;
-  border: var(--px) solid var(--line) !important;
-  box-shadow: inset 0 -2px 0 rgba(0,0,0,.06) !important;
-  transition: none !important;
-}
-.accordion-header:hover, [data-testid="accordion"] summary:hover {
-  background: var(--gold) !important;
-  color: var(--ink) !important;
-}
-details > *:not(summary), .accordion > *:not(summary) {
-  margin-top: 0 !important;
-}
-
-/* ── 上传区：整行套一层木框，内部完全扁平（避免双层框）── */
-.composer-tools {
-  border: var(--px) solid var(--wood-dk) !important;
-  background: var(--bg1) !important;
-  box-shadow: var(--shadow),
-              inset 0 0 0 3px var(--wood-lt),
-              inset 0 0 0 5px #7a5232,
-              inset 0 0 0 6px var(--bg2) !important;
-  padding: 12px 14px !important;
-  align-items: center !important;
-  gap: 12px !important;
-}
-/* 行内所有元素一律无框无底无阴影 */
-.composer-tools .mini-upload,
-.composer-tools .mini-upload *,
-.composer-tools [data-testid="file"],
-.composer-tools [data-testid="file"] *,
-.composer-tools [data-testid="file"] > div,
-.composer-tools [data-testid="file"] > div > div {
-  border: none !important;
-  box-shadow: none !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  border-radius: 0 !important;
-}
-/* 投放区用细虚线提示（唯一可见的框） */
-.composer-tools [data-testid="file-upload"],
-.composer-tools .upload-button,
-.composer-tools .upload-container {
-  border: var(--px) dashed var(--line2) !important;
-  min-height: 46px !important;
-  display: flex; align-items: center; justify-content: center;
-  color: var(--ink) !important;
-  font-weight: 700 !important;
-  font-family: var(--mono) !important;
-  font-size: 15px !important;
-  padding: 6px 10px !important;
-  background: var(--bg1) !important;
-  background-image: none !important;
-}
-.composer-tools .upload-container.hidden { display: none !important; }
-/* Gradio drop-zone：命中最内层容器，统一压成羊皮纸 */
-.composer-tools [data-testid="file"] .upload-container,
-.composer-tools [data-testid="file"] .upload-button,
-.composer-tools [data-testid="file"] .file-preview,
-.composer-tools [data-testid="file"] .wrap,
-.composer-tools [data-testid="file"] .boundedheight {
-  background: var(--bg1) !important;
-  background-color: var(--bg1) !important;
-  background-image: none !important;
-  box-shadow: none !important;
-  border: none !important;
-  color: var(--ink) !important;
-  font-family: var(--mono) !important;
-  font-size: 15px !important;
-}
-/* 外层容器也给羊皮纸，避免露出棕底 */
-.composer-tools [data-testid="file"] > div {
-  background: var(--bg1) !important;
-  background-image: none !important;
-}
-/* 唯一保留的虚线投放提示 */
-.composer-tools [data-testid="file"] .upload-container {
-  border: var(--px) dashed var(--line2) !important;
-  min-height: 46px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-.composer-tools [data-testid="file"] .upload-container.hidden { display: none !important; }
-.composer-tools [data-testid="file"] .upload-container:hover {
-  background: var(--bg2) !important;
-  border-color: var(--acc) !important;
-}
-/* 拖拽高亮时保持羊皮纸色 */
-.composer-tools [data-testid="file"] .upload-container:hover,
-.composer-tools [data-testid="file"]:hover > div {
-  background: var(--bg2) !important;
-}
-.composer-tools .upload-button:hover {
-  border-color: var(--acc) !important;
-  background: var(--bg2) !important;
-}
-/* 标签在框内顶部独立一行 */
-.composer-tools .label-wrap,
-.composer-tools [data-testid="file"] .label-wrap {
-  position: static !important;
-  display: block !important;
-  margin: 0 0 4px 0 !important;
-  padding: 0 !important;
-  color: var(--ink2) !important;
-  font-family: var(--font) !important;
-  font-size: 12.5px !important;
-  font-weight: 600 !important;
-  line-height: 1.4 !important;
-}
-/* 「用内置模板」复选框文字 */
-.composer-tools label,
-.composer-tools span {
-  color: var(--ink2) !important;
-  font-family: var(--font) !important;
-  font-size: 13px !important;
-}
-
-/* 标签：羊皮纸上写字 */
-.gradio-container .label-wrap, .gradio-container button.label-wrap,
-.gradio-container label > span, .gradio-container label {
-  background: transparent !important;
-  color: var(--ink2) !important;
-  border: none !important;
-  box-shadow: none !important;
-  font-family: var(--font) !important;
-  font-size: 12.5px !important;
-  font-weight: 600 !important;
-  letter-spacing: .3px !important;
-  padding: 0 2px !important;
-}
-.gradio-container .label-wrap > span { background: transparent !important; }
-
-/* ── 下拉 ── */
-.gradio-dropdown, .wrap, .wrap-inner {
-  font-family: var(--body) !important;
-  border-radius: 0 !important;
-}
-
-/* ── 分隔 / 提示 ── */
-hr { border: none !important; border-top: var(--px) dashed var(--line) !important; opacity: 1; margin: 26px 0 !important; }
-.hint { font-family: var(--mono); font-size: 15px; color: var(--dim); }
-
-/* ── 标题层级 ── */
-.gradio-container h3, .gradio-container h4, .gradio-container h5 {
-  font-family: var(--font) !important;
-  font-size: 14px !important;
-  font-weight: 700 !important;
-  color: var(--ink) !important;
-  letter-spacing: .5px !important;
-  margin: 18px 0 8px !important;
-  padding-bottom: 4px;
-  border-bottom: var(--px) solid var(--line);
-}
-
-/* ── Markdown 表格：石板表格 ── */
-.gradio-markdown table {
-  border-collapse: collapse; width: 100%;
-  font-size: 13px;
-  border: var(--px) solid var(--line2);
-}
-.gradio-markdown th, .gradio-markdown td {
-  border: 1px solid var(--line);
-  padding: 7px 11px;
-  text-align: left;
-}
-.gradio-markdown th {
-  background: var(--bg2);
-  color: var(--ink);
-  font-family: var(--font);
-  font-size: 12.5px;
-  font-weight: 600;
-}
-.gradio-markdown td { color: var(--ink2); }
-
-/* ── 历史记录：物品卡片 ── */
-.hist-card {
-  border: var(--px) solid var(--line2);
-  border-radius: 0;
-  background: var(--bg1);
-  padding: 11px 13px;
-  margin-bottom: 9px;
-  box-shadow: var(--shadow-sm);
-  transition: none;
-}
-.hist-card:hover { border-color: var(--acc); background: var(--bg2); }
-.hist-card .h-title { font-family: var(--font); font-size: 13.5px; font-weight: 600; color: var(--ink); }
-.hist-card .h-meta { font-family: var(--mono); font-size: 14px; color: var(--dim); }
-.hist-card a { color: var(--acc); text-decoration: none; font-weight: 700; }
-.hist-card a:hover { color: var(--acc2); text-decoration: underline; }
-
-/* ── 状态栏：游戏 HUD ── */
-.pix-statusbar {
-  border-top: none;
-  margin-top: 0;
-  padding: 8px 2px;
-  font-family: var(--mono);
-  font-size: 15px;
-  color: var(--ink2);
-  min-height: 0;
-  line-height: 1.6;
-}
-
-/* ── 预览：真实纸张 ── */
-.r-wrap {
-  max-height: 620px; overflow: auto;
-  background: #fffef9; color: #222;
-  border: var(--px) solid var(--line2);
-  border-radius: 0;
-  padding: 12px 16px;
-  box-shadow: var(--shadow-sm);
-  font-family: 'SimSun', '宋体', serif;
-}
-:root[data-ui-theme="dark"] .r-wrap { background: #f5efe0; }
-.r-toolbar {
-  font-family: var(--mono); font-size: 15px; color: var(--ink2);
-  border-bottom: var(--px) solid var(--line); padding-bottom: 7px; margin-bottom: 9px;
-  position: sticky; top: 0; background: inherit; z-index: 2;
-}
-.r-page { line-height: 1.5; }
-.r-page .r-para { margin: 3px 0; font-size: 12px; }
-.r-table {
-  width: 100%; border-collapse: collapse; margin: 6px 0;
-  font-size: 11px; page-break-inside: avoid;
-}
-.r-table td { border: 1px solid #7a6a52; padding: 4px 6px; vertical-align: top; background: #fff; }
-.r-table .r-para { margin: 1px 0; }
-.r-nested td { border: 1px solid #b4a58c; }
-
-/* 虚线占位框 */
-.r-ph {
-  border: 2px dashed #b4a58c;
-  border-radius: 0;
-  background: #faf5e8;
-  margin: 10px auto;
-  display: flex; align-items: center; justify-content: center;
-  box-sizing: border-box;
-}
-.r-ph span {
-  color: #9c8a6a;
-  font-family: var(--mono);
-  font-size: 14px;
-  letter-spacing: 1px;
-}
-
-/* ── 对话气泡：羊皮纸对话框 ── */
-.chat-empty {
-  color: var(--dim);
-  font-family: var(--mono);
-  font-size: 16px;
-  padding: 4px 2px 20px;
-  line-height: 1.7;
-}
-.chat-user, .chat-ai { display: flex; gap: 9px; margin: 12px 0; align-items: flex-start; }
-.chat-user { flex-direction: row-reverse; }
-.chat-ico {
-  flex: 0 0 auto; font-size: 17px; line-height: 1.5;
-}
-.chat-bubble {
-  max-width: 84%;
-  padding: 9px 13px;
-  border-radius: 0;
-  line-height: 1.65;
-  font-size: 13.5px;
-  white-space: pre-wrap;
-  font-family: var(--body);
-  border: var(--px) solid var(--line2);
-  box-shadow: var(--shadow-sm);
-  position: relative;
-}
-.chat-user .chat-bubble {
-  background: var(--gold);
-  color: #3a2a1a;
-  border-color: #a8791f;
-}
-.chat-ai .chat-bubble {
-  background: var(--bg1);
-  color: var(--ink2);
-}
-
-/* ── 工具行 ── */
-.composer-tools { margin-top: 14px; }
-.composer-tools .mini-upload { min-width: 0; }
-.out-row { margin-top: 20px; align-items: flex-start; gap: 12px; }
-.chat-shell { display: block; margin-top: 24px; }
-.dl-btn { width: fit-content !important; max-width: 100% !important; white-space: nowrap; }
-.out-row .gradio-markdown {
-  font-family: var(--mono) !important;
-  font-size: 15px !important;
-  color: var(--dim) !important;
-  line-height: 1.55 !important;
-}
-.out-row .gradio-markdown p { margin: 6px 0 0 !important; }
-.gradio-container .html-container { min-height: 0 !important; padding: 0 !important; }
-
-/* ── 选中 / 链接 / 滚动条 ── */
-::selection { background: var(--gold); color: #3a2a1a; }
-a { color: var(--acc); }
-.gradio-container footer { display: none !important; }
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: var(--bg2); }
-::-webkit-scrollbar-thumb {
-  background: var(--wood);
-  border: var(--px) solid var(--wood-dk);
-}
-::-webkit-scrollbar-thumb:hover { background: var(--wood-lt); }
-
-/* ══════════ 星露谷风装饰贴图（纯 CSS 像素画）══════════ */
-/* 固定在页面四周，不挡交互，低透明度融入背景 */
-.deco-layer {
-  position: fixed; inset: 0;
-  pointer-events: none; z-index: 0;
-  overflow: hidden;
-  opacity: .55;
-}
-:root[data-ui-theme="dark"] .deco-layer { opacity: .38; }
-
-.deco {
-  position: absolute;
-  image-rendering: pixelated;
-  filter: drop-shadow(2px 2px 0 rgba(0,0,0,.20));
-  animation: deco-bob 4.2s ease-in-out infinite;
-}
-@keyframes deco-bob {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-6px); }
-}
-/* 每只错开节奏，看起来是各自在走动 */
-.deco.d1 { animation-delay: -0.2s; }
-.deco.d2 { animation-delay: -1.4s; }
-.deco.d3 { animation-delay: -2.6s; }
-.deco.d4 { animation-delay: -3.1s; }
-
-/* ── 鸡（用 box-shadow 堆像素点）── */
-.px-chicken {
-  width: 6px; height: 6px;
-  background: transparent;
-  /* 网格：每格 6px。白色身体、红冠、橙嘴、黄脚 */
-  box-shadow:
-    /* 红冠 */
-    18px -6px 0 #d64545,
-    24px -6px 0 #d64545,
-    /* 头 */
-    24px 0 0 #f7f3e8,
-    30px 0 0 #f7f3e8,
-    /* 眼睛 */
-    30px 6px 0 #3a2a1a,
-    /* 嘴 */
-    36px 6px 0 #e89b3c,
-    /* 身体 */
-    12px 6px 0 #f7f3e8,
-    18px 6px 0 #f7f3e8,
-    24px 6px 0 #f7f3e8,
-    12px 12px 0 #f7f3e8,
-    18px 12px 0 #f7f3e8,
-    24px 12px 0 #f7f3e8,
-    30px 12px 0 #f7f3e8,
-    0 12px 0 #efe4cf,
-    6px 12px 0 #f7f3e8,
-    /* 尾羽 */
-    -6px 6px 0 #efe4cf,
-    -6px 0 #efe4cf,
-    /* 翅膀阴影 */
-    18px 12px 0 #e2d6bd,
-    /* 脚 */
-    18px 18px 0 #e89b3c,
-    30px 18px 0 #e89b3c,
-    18px 24px 0 #e89b3c,
-    30px 24px 0 #e89b3c;
-}
-
-/* ── 鸭（黄身、橙嘴）── */
-.px-duck {
-  width: 6px; height: 6px;
-  background: transparent;
-  box-shadow:
-    /* 头 */
-    24px 0 0 #f2d06b,
-    30px 0 0 #f2d06b,
-    30px 6px 0 #3a2a1a,
-    36px 6px 0 #e8892b,
-    /* 身体 */
-    12px 6px 0 #f2d06b,
-    18px 6px 0 #f2d06b,
-    24px 6px 0 #f2d06b,
-    12px 12px 0 #f2d06b,
-    18px 12px 0 #f2d06b,
-    24px 12px 0 #f2d06b,
-    30px 12px 0 #f2d06b,
-    6px 12px 0 #e8c455,
-    /* 尾 */
-    0 6px 0 #e8c455,
-    /* 脚 */
-    18px 18px 0 #e8892b,
-    30px 18px 0 #e8892b;
-}
-
-/* ── 牛（黑白花）── */
-.px-cow {
-  width: 7px; height: 7px;
-  background: transparent;
-  box-shadow:
-    /* 角 */
-    0 -7px 0 #d8cbb0,
-    28px -7px 0 #d8cbb0,
-    /* 头 */
-    7px 0 0 #f7f3e8,
-    14px 0 0 #3a2a1a,
-    21px 0 0 #f7f3e8,
-    7px 7px 0 #f7f3e8,
-    14px 7px 0 #f7f3e8,
-    21px 7px 0 #f7f3e8,
-    /* 身体 + 黑斑 */
-    7px 14px 0 #f7f3e8,
-    14px 14px 0 #3a2a1a,
-    21px 14px 0 #f7f3e8,
-    28px 14px 0 #3a2a1a,
-    35px 14px 0 #f7f3e8,
-    7px 21px 0 #f7f3e8,
-    14px 21px 0 #3a2a1a,
-    21px 21px 0 #f7f3e8,
-    28px 21px 0 #f7f3e8,
-    35px 21px 0 #3a2a1a,
-    /* 腿 */
-    14px 28px 0 #6b4f2f,
-    35px 28px 0 #6b4f2f;
-}
-
-/* ── 农夫小人（草帽 + 背带裤）── */
-.px-farmer {
-  width: 7px; height: 7px;
-  background: transparent;
-  box-shadow:
-    /* 草帽 */
-    -7px 0 0 #e8c455,
-    0 0 0 #e8c455,
-    7px 0 0 #e8c455,
-    14px 0 0 #e8c455,
-    21px 0 0 #e8c455,
-    /* 脸 */
-    7px 7px 0 #f2c9a0,
-    14px 7px 0 #f2c9a0,
-    7px 14px 0 #f2c9a0,
-    14px 14px 0 #3a2a1a,
-    /* 衣服 */
-    0 21px 0 #5b8c3e,
-    7px 21px 0 #5b8c3e,
-    14px 21px 0 #5b8c3e,
-    21px 21px 0 #5b8c3e,
-    /* 背带 */
-    7px 28px 0 #3c6ea5,
-    14px 28px 0 #3c6ea5,
-    /* 腿 */
-    7px 35px 0 #3a2a1a,
-    14px 35px 0 #3a2a1a;
-
-/* 装饰位置：贴着内容区两侧，避免跑到屏幕外 */
-.deco.p1 { left: 26%; top: 12%; }
-.deco.p2 { left: 24%; top: 52%; }
-.deco.p3 { right: 26%; top: 22%; }
-.deco.p4 { right: 24%; top: 60%; }
-.deco.p5 { left: 30%; bottom: 8%; }
-.deco.p6 { right: 30%; bottom: 14%; }
-
-/* 窄屏时把装饰收进内容两侧更窄的位置 */
-@media (max-width: 1280px) {
-  .deco-layer { opacity: .30; }
-  .deco.p1 { left: 12%; }
-  .deco.p2 { left: 10%; }
-  .deco.p3 { right: 12%; }
-  .deco.p4 { right: 10%; }
-  .deco.p5 { left: 14%; }
-  .deco.p6 { right: 14%; }
-}
-@media (max-width: 900px) {
-  .deco-layer { display: none; }
-}
-@media (max-width: 640px) {
-  .pix-header h1 { font-size: 20px; }
-  .pix-header .sub { font-size: 14px; }
-  .gradio-container { padding: 0 10px 70px !important; }
-}
-
-/* ── 新手三步引导条 ── */
-.steps-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  align-items: center;
-  margin: 4px 2px 10px;
-  padding: 8px 12px;
-  background: var(--bg1, #f6ecd2);
-  border: 2px solid var(--line, #c9b48e);
-  border-radius: 8px;
-  box-shadow: var(--shadow-sm, 2px 2px 0 rgba(58,42,26,.3));
-  font-family: var(--body, 'SimSun', serif);
-  font-size: 12.5px;
-  color: var(--ink2, #58432c);
-}
-.steps-bar .step { display: inline-flex; align-items: center; gap: 6px; }
-.steps-bar .step b {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 17px; height: 17px; border-radius: 50%;
-  background: var(--acc, #5b8c3e); color: #fff; font-size: 11px;
-  flex: 0 0 auto;
-}
-@media (max-width: 640px) {
-  .steps-bar { font-size: 11px; padding: 6px 10px; }
-}
-
-/* ══════════ 可读性修复：投放区 / 预览提示 / 勾选框 ══════════ */
-
-/* 1) 模板投放区：强制羊皮纸底 + 深字，避免被木按钮样式染成奶油字压木底 */
-#tplUpload,
-#tplUpload .upload-container,
-#tplUpload .upload-button,
-#tplUpload [data-testid="file-upload"],
-#tplUpload [data-testid="file"],
-#tplUpload [data-testid="file"] > div {
-  background: var(--bg1) !important;
-  background-image: none !important;
-  box-shadow: none !important;
-  text-shadow: none !important;
 }
 #tplUpload, #tplUpload * {
-  color: var(--ink) !important;
-  font-family: var(--mono) !important;
-  font-size: 15px !important;
-  font-weight: 700 !important;
+  color: var(--app-fg) !important;
   text-shadow: none !important;
 }
 #tplUpload .upload-container,
 #tplUpload [data-testid="file-upload"] {
-  border: var(--px) dashed var(--line2) !important;
+  border: 1px dashed var(--app-border-strong) !important;
+  border-radius: calc(var(--app-radius) - 2px) !important;
+  background: var(--app-bg-subtle) !important;
+  background-image: none !important;
+  box-shadow: none !important;
   min-height: 46px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
   cursor: pointer !important;
+  color: var(--app-fg-muted) !important;
+  font-family: var(--app-font) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  transition: background-color .15s ease, border-color .15s ease !important;
 }
 #tplUpload .upload-container:hover,
 #tplUpload [data-testid="file-upload"]:hover {
-  background: var(--bg2) !important;
-  border-color: var(--acc) !important;
+  background: var(--app-muted) !important;
+  border-color: var(--app-fg-muted) !important;
+  color: var(--app-fg) !important;
 }
+#tplUpload .upload-container > div,
+#tplUpload [data-testid="upload-text"] {
+  color: var(--app-fg-muted) !important;
+  font-family: var(--app-font) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+#tplUpload .upload-container:hover > div,
+#tplUpload .upload-container:hover [data-testid="upload-text"] { color: var(--app-fg) !important; }
 #tplUpload svg, #tplUpload [class*="icon"] {
-  color: var(--ink2) !important;
-  fill: var(--ink2) !important;
+  color: var(--app-fg-muted) !important; fill: var(--app-fg-muted) !important;
+  width: 18px !important; height: 18px !important;
+}
+#tplUpload label, #tplUpload .block-label {
+  font-size: 12px !important; font-weight: 500 !important;
+  color: var(--app-fg-muted) !important;
 }
 
-/* 2) 预览框提示文字：加深加粗，彻底解决浅字压浅底 */
-.preview-panel .pix-statusbar,
-.preview-panel .pix-statusbar * {
-  color: var(--ink) !important;
-  font-size: 15px !important;
-  font-weight: 700 !important;
-  text-shadow: none !important;
-  opacity: 1 !important;
-}
-.preview-panel .pix-statusbar {
-  padding: 14px 4px !important;
-  letter-spacing: .5px;
-}
-
-/* 3) 勾选框：像素风方块 + 明确的勾选/悬停/按下反馈 */
-input[type="checkbox"] {
+/* ─────────── 勾选框 ─────────── */
+input[type="checkbox"],
+#useBuiltin input[type="checkbox"],
+.gradio-container input[type="checkbox"] {
   -webkit-appearance: none !important;
   appearance: none !important;
-  width: 20px !important;
-  height: 20px !important;
-  min-width: 20px !important;
+  box-sizing: border-box !important;
+  width: 17px !important; height: 17px !important;
+  min-width: 17px !important; min-height: 17px !important;
+  max-width: 17px !important; max-height: 17px !important;
   margin: 0 8px 0 0 !important;
-  border: var(--px) solid var(--wood-dk) !important;
-  border-radius: 0 !important;
-  background: var(--bg1) !important;
-  box-shadow: inset 2px 2px 0 rgba(0,0,0,.18) !important;
+  padding: 0 !important;
+  border: 1px solid var(--app-border-strong) !important;
+  border-radius: 4px !important;
+  background: var(--app-bg) !important;
+  box-shadow: var(--app-shadow-xs) !important;
   cursor: pointer !important;
   position: relative !important;
   flex: 0 0 auto !important;
-  transition: background .12s ease, border-color .12s ease,
-              box-shadow .12s ease, transform .08s ease !important;
+  transition: background-color .15s ease, border-color .15s ease,
+              box-shadow .15s ease !important;
 }
-input[type="checkbox"]:hover {
-  border-color: var(--acc) !important;
-  background: var(--bg2) !important;
-  box-shadow: inset 2px 2px 0 rgba(0,0,0,.18), 0 0 0 2px var(--acc-lt) !important;
-}
-input[type="checkbox"]:active { transform: scale(.88) !important; }
+input[type="checkbox"]:hover { border-color: var(--app-fg-muted) !important; }
 input[type="checkbox"]:checked {
-  background: var(--acc) !important;
-  border-color: #2f5a1e !important;
-  box-shadow: inset 0 0 0 2px var(--acc-lt), 0 0 0 1px var(--wood-dk) !important;
+  background: var(--app-primary) !important;
+  border-color: var(--app-primary) !important;
 }
 input[type="checkbox"]:checked::after {
-  content: "✔";
+  content: "" !important;
   position: absolute !important;
-  inset: 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  color: #fff !important;
-  font-size: 14px !important;
-  font-weight: 900 !important;
-  line-height: 1 !important;
-  text-shadow: 1px 1px 0 rgba(0,0,0,.4) !important;
+  left: 5px !important; top: 2px !important;
+  width: 4px !important; height: 8px !important;
+  border: solid var(--app-primary-fg) !important;
+  border-width: 0 1.8px 1.8px 0 !important;
+  transform: rotate(42deg) !important;
 }
-/* 勾选框旁的说明文字：深色、稍大、对齐方块 */
-#useBuiltin label,
-#useBuiltin label span,
-#useBuiltin > div {
-  color: var(--ink) !important;
-  font-family: var(--body) !important;
+input[type="checkbox"]:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 3px var(--app-ring) !important;
+}
+#useBuiltin label, #useBuiltin .label-text {
+  display: inline-flex !important; align-items: center !important;
+  font-size: 13px !important; font-weight: 500 !important;
+  color: var(--app-fg) !important; cursor: pointer !important;
+}
+
+/* ─────────── 结果区 ─────────── */
+.out-row { margin-top: 18px !important; gap: 16px !important; align-items: stretch !important; }
+.out-row .gradio-markdown {
+  font-family: var(--app-font) !important;
+  font-size: 12.5px !important;
+  color: var(--app-fg-muted) !important;
+  line-height: 1.5 !important;
+}
+.out-row .gradio-markdown p { margin: 6px 0 0 !important; }
+
+.preview-panel {
+  border: 1px solid var(--app-border) !important;
+  border-radius: var(--app-radius-lg) !important;
+  background: var(--app-card) !important;
+  box-shadow: var(--app-shadow-sm) !important;
+  padding: 0 !important;
+  min-height: 120px;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.pix-statusbar,
+.preview-panel .pix-statusbar {
+  font-family: var(--app-font) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  color: var(--app-fg-muted) !important;
+  text-align: center;
+  padding: 36px 20px !important;
+  line-height: 1.6;
+  letter-spacing: 0;
+  text-shadow: none !important;
+}
+.preview-panel .pix-statusbar * { color: var(--app-fg-muted) !important; }
+/* 有内容时取消居中，让预览铺开 */
+.preview-panel:has(.r-wrap) { display: block; padding: 12px !important; }
+
+/* ─────────── 文档预览（纸张）─────────── */
+.r-wrap {
+  max-height: 640px; overflow: auto;
+  background: #ffffff; color: #18181b;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  padding: 18px 22px;
+  box-shadow: none;
+  font-family: "Songti SC", "SimSun", "宋体", serif;
+}
+:root[data-ui-theme="dark"] .r-wrap { background: #ffffff; color: #18181b; }
+.r-toolbar {
+  font-family: var(--app-font); font-size: 12px; color: #71717a;
+  border-bottom: 1px solid #e4e4e7; padding-bottom: 8px; margin-bottom: 12px;
+  position: sticky; top: 0; background: #ffffff; z-index: 2;
+}
+.r-page { line-height: 1.6; }
+.r-page .r-para { margin: 4px 0; font-size: 12.5px; }
+.r-table {
+  width: 100%; border-collapse: collapse; margin: 8px 0;
+  font-size: 11.5px; page-break-inside: avoid;
+}
+.r-table td { border: 1px solid #a1a1aa; padding: 5px 7px; vertical-align: top; background: #fff; }
+.r-table th { border: 1px solid #a1a1aa; padding: 5px 7px; background: #f4f4f5; font-weight: 600; }
+.r-ph { border: 1px dashed #d4d4d8; display: inline-block; }
+
+/* ─────────── 对话流 ─────────── */
+.chat-shell { margin-top: 18px !important; }
+.chat-empty {
+  font-size: 13px; color: var(--app-fg-muted); text-align: center;
+  padding: 26px 16px; border: 1px dashed var(--app-border);
+  border-radius: var(--app-radius); background: var(--app-bg-subtle);
+}
+.chat-user, .chat-ai {
+  display: flex; gap: 10px; align-items: flex-start; margin: 10px 0;
+}
+.chat-user { flex-direction: row-reverse; }
+.chat-ico {
+  flex: 0 0 auto; width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 999px; font-size: 13px;
+  background: var(--app-muted); color: var(--app-fg);
+  border: 1px solid var(--app-border);
+}
+.chat-bubble {
+  max-width: 76%; padding: 9px 13px; font-size: 13.5px; line-height: 1.6;
+  border-radius: var(--app-radius); border: 1px solid var(--app-border);
+  background: var(--app-card); color: var(--app-fg);
+  box-shadow: var(--app-shadow-xs);
+  white-space: pre-wrap; word-break: break-word;
+}
+.chat-user .chat-bubble {
+  background: var(--app-primary); color: var(--app-primary-fg);
+  border-color: var(--app-primary);
+}
+
+/* ─────────── 历史记录 ─────────── */
+.hist-card {
+  border: 1px solid var(--app-border); border-radius: var(--app-radius);
+  background: var(--app-card); padding: 12px 14px; margin-bottom: 10px;
+  box-shadow: var(--app-shadow-xs);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.hist-card:hover { border-color: var(--app-border-strong); box-shadow: var(--app-shadow-sm); }
+.hist-card .h-title { font-size: 13.5px; font-weight: 600; color: var(--app-fg); }
+.hist-card .h-meta { font-size: 12px; color: var(--app-fg-muted); margin: 2px 0 8px; }
+.hist-card a {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12.5px; font-weight: 550; color: var(--app-primary-fg);
+  background: var(--app-primary); border: 1px solid var(--app-primary);
+  border-radius: 8px; padding: 6px 11px; text-decoration: none;
+  transition: background-color .15s ease;
+}
+.hist-card a:hover { background: var(--app-primary-hover); border-color: var(--app-primary-hover); }
+
+/* ─────────── 折叠面板（卡片化）─────────── */
+details, .accordion, [data-testid="accordion"], .gr-accordion {
+  border: 1px solid var(--app-border) !important;
+  border-radius: var(--app-radius) !important;
+  background: var(--app-card) !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+  margin-top: 14px !important;
+  padding: 0 !important;
+}
+details > summary, .label-wrap, [data-testid="accordion"] > button {
+  padding: 12px 16px !important;
+  font-family: var(--app-font) !important;
   font-size: 13.5px !important;
-  font-weight: 700 !important;
-  align-items: center !important;
-  cursor: pointer !important;
+  font-weight: 550 !important;
+  color: var(--app-fg) !important;
+  background: var(--app-card) !important;
+  border: none !important;
+  cursor: pointer;
+  transition: background-color .15s ease !important;
+}
+details > summary:hover, .label-wrap:hover { background: var(--app-muted) !important; }
+details[open] > summary, .label-wrap.open {
+  border-bottom: 1px solid var(--app-border) !important;
+}
+details > *:not(summary) { margin-top: 0 !important; }
+.gradio-container .html-container { min-height: 0 !important; padding: 0 !important; }
+.accordion > div, [data-testid="accordion-content"] { padding: 14px 16px !important; }
+
+/* ─────────── 下拉 ─────────── */
+.gradio-dropdown, .wrap, .wrap-inner {
+  font-family: var(--app-font) !important;
+  border-radius: var(--app-radius) !important;
+}
+ul.options, .options {
+  border: 1px solid var(--app-border) !important;
+  border-radius: var(--app-radius) !important;
+  box-shadow: var(--app-shadow-md) !important;
+  background: var(--app-card) !important;
+  overflow: hidden;
+}
+ul.options li, .options .item {
+  font-size: 13px !important;
+  padding: 8px 12px !important;
+}
+ul.options li:hover, .options .item:hover { background: var(--app-muted) !important; }
+
+/* ─────────── 文字排版 ─────────── */
+.gradio-container h1, .gradio-container h2, .gradio-container h3,
+.gradio-container h4, .gradio-container h5 {
+  font-family: var(--app-font) !important;
+  color: var(--app-fg) !important;
+  letter-spacing: -.01em;
+  font-weight: 600 !important;
+}
+.gradio-container h3 { font-size: 15px !important; margin: 16px 0 8px !important; }
+.gradio-container h4 { font-size: 14px !important; margin: 14px 0 6px !important; }
+.gradio-container p, .prose p { color: var(--app-fg); }
+.prose { font-size: 13.5px !important; line-height: 1.65 !important; }
+.prose code {
+  background: var(--app-muted); color: var(--app-fg);
+  padding: 1px 5px; border-radius: 5px; font-size: 12.5px;
+  font-family: var(--app-mono); border: 1px solid var(--app-border);
+}
+.prose a { color: var(--app-accent); text-decoration: none; }
+.prose a:hover { text-decoration: underline; }
+.prose ul, .prose ol { padding-left: 20px; }
+.prose li { margin: 3px 0; }
+hr { border: none !important; border-top: 1px solid var(--app-border) !important; margin: 20px 0 !important; }
+
+/* ─────────── 主题切换按钮 ─────────── */
+#themeBtn {
+  position: fixed !important;
+  top: 18px; right: 20px; z-index: 60;
+  width: 36px !important; height: 36px !important;
+  min-width: 36px !important; padding: 0 !important;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--app-card) !important;
+  color: var(--app-fg) !important;
+  border: 1px solid var(--app-border) !important;
+  border-radius: var(--app-radius) !important;
+  box-shadow: var(--app-shadow-xs) !important;
+  font-size: 14px !important;
+  transition: background-color .15s ease !important;
+}
+#themeBtn:hover { background: var(--app-muted) !important; }
+
+/* ─────────── 滚动条 ─────────── */
+* { scrollbar-width: thin; scrollbar-color: var(--app-border-strong) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--app-border-strong); border-radius: 999px;
+  border: 3px solid transparent; background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--app-fg-muted); background-clip: content-box; }
+
+/* ─────────── 响应式 ─────────── */
+@media (max-width: 860px) {
+  .gradio-container { padding: 0 14px 48px !important; }
+  .app-header { padding: 16px 0 14px; }
+  .app-header .pill { display: none; }
+  .chat-bubble { max-width: 88%; }
+}
+@media (max-width: 640px) {
+  .app-header h1 { font-size: 15.5px; }
+  .app-header .brand-text p { font-size: 11.5px; }
+  .steps-bar { font-size: 11.5px; padding: 9px 12px; gap: 5px 14px; }
+  .out-row { flex-direction: column; }
 }
 """
 
 
-# ── 亮/暗主题切换：水阀门旋转（客户端 JS，走 gradio 的 js= 回调）──
+# ── 亮/暗主题切换（客户端 JS，走 gradio 的 js= 回调）──
 TOGGLE_JS = r"""
 function(b){
   const r = document.documentElement;
   const next = r.getAttribute('data-ui-theme') === 'dark' ? '' : 'dark';
   r.setAttribute('data-ui-theme', next);
 
+  // 主题只由 data-ui-theme 决定：压掉 gradio 依系统深色加的 .dark
+  r.classList.remove('dark');
+  if (document.body) document.body.classList.remove('dark');
+
   const el = document.getElementById('themeBtn');
   if (el) {
-    // 阀门旋转换向
-    el.classList.toggle('turned', next === 'dark');
-    // 图标：☾ 夜 / ☀ 日
     const ico = el.querySelector('span') || el;
     ico.textContent = next === 'dark' ? '☀' : '☾';
   }
@@ -1501,9 +1122,16 @@ function(b){
   const r = document.documentElement;
   r.setAttribute('data-ui-theme', s === 'dark' ? 'dark' : '');
 
+  const strip = () => {
+    r.classList.remove('dark');
+    if (document.body) document.body.classList.remove('dark');
+  };
+  strip();
+  setTimeout(strip, 250);
+  setTimeout(strip, 1000);
+
   const el = document.getElementById('themeBtn');
   if (el) {
-    el.classList.toggle('turned', s === 'dark');
     const ico = el.querySelector('span') || el;
     ico.textContent = s === 'dark' ? '☀' : '☾';
   }
@@ -1513,31 +1141,23 @@ function(b){
 
 
 def build_ui():
-    with gr.Blocks(title="实验报告工坊", theme=gr.themes.Base(primary_hue="green", neutral_hue="stone"), css=CSS) as demo:
+    with gr.Blocks(title="实验报告工坊") as demo:
 
-        # ── 星露谷风装饰贴图（纯 CSS 像素画，不挡交互）──
+        # ── 顶栏 ──
         gr.HTML("""
-        <div class="deco-layer" aria-hidden="true">
-            <div class="deco px-chicken p1 d1"></div>
-            <div class="deco px-duck    p2 d2"></div>
-            <div class="deco px-cow     p3 d3"></div>
-            <div class="deco px-farmer  p4 d1"></div>
-            <div class="deco px-chicken p5 d4"></div>
-            <div class="deco px-duck    p6 d3"></div>
-        </div>
-        """)
-
-        # ── 顶栏：木牌招牌（纯 HTML/CSS，不含需执行的内联 JS）──
-        gr.HTML("""
-        <div class="pix-header">
-            <div class="hd-left">
-                <h1>◆ 实验报告工坊</h1>
-                <p class="sub">LAB REPORT CRAFT<span class="pix-dot">·</span>上传指导书<span class="pix-dot">·</span>熔炼成稿<span class="pix-dot">·</span>OCR + AI</p>
+        <header class="app-header">
+          <div class="brand">
+            <div class="brand-mark">◆</div>
+            <div class="brand-text">
+              <h1>实验报告工坊</h1>
+              <p>上传指导书 · OCR + AI · 一键成稿</p>
             </div>
-        </div>
+          </div>
+          <span class="pill">本地运行 · <b>密钥自配</b></span>
+        </header>
         """)
 
-        # ── 主题切换按钮（水阀门旋钮，gradio Button + js 回调）──
+        # ── 主题切换按钮（gradio Button + js 回调）──
         theme_btn = gr.Button("☾", elem_id="themeBtn", variant="secondary")
 
         # ── 新手三步引导条（一眼看懂的流程，取代藏在折叠区的说明）──
@@ -1667,5 +1287,7 @@ if __name__ == "__main__":
     demo = build_ui()
     demo.launch(
         server_name="0.0.0.0", server_port=7860, share=False, show_error=True,
+        theme=gr.themes.Base(primary_hue="neutral", neutral_hue="neutral"),
+        css=CSS,
         allowed_paths=[str(UPLOAD_DIR), str(OUTPUT_DIR), str(BASE_DIR)],
     )
