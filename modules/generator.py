@@ -1486,6 +1486,69 @@ def _stretch_table_full_width(table, container_tc=None, fallback_width=None):
             w_el.set(_qn('w:w'), str(per if ci < ncols - 1 else target - per * (ncols - 1)))
 
 
+def _visual_units(s) -> int:
+    """估算显示宽度：汉字 2 个单位，其余 1 个。"""
+    return sum(2 if ord(ch) > 127 else 1 for ch in str(s))
+
+
+def _size_table_compact(table, rows, available=None):
+    """按内容给定列宽，不让表格撑满整栏。
+
+    撑满整栏后，两列之间的空白会大到像"楚河汉界"——指导书里的数据表都是紧凑的，
+    列宽只比表头文字宽一点，整体靠左放。
+    """
+    from docx.oxml.ns import qn as _qn
+    ncols = max(len(r) for r in rows)
+    widths = []
+    for ci in range(ncols):
+        u = max((_visual_units(r[ci]) if ci < len(r) else 0) for r in rows)
+        widths.append(max(1200, u * 120 + 240))
+    total = sum(widths)
+    if available and total > available:
+        k = available / total
+        widths = [max(1000, int(x * k)) for x in widths]
+
+    tbl = table._tbl
+    tblPr = tbl.tblPr
+    if tblPr is None:
+        tblPr = tbl.makeelement(_qn('w:tblPr'), {})
+        tbl.insert(0, tblPr)
+    grid = tbl.find(_qn('w:tblGrid'))
+    for i, c in enumerate(grid.findall(_qn('w:gridCol')) if grid is not None else []):
+        if i < len(widths):
+            c.set(_qn('w:w'), str(widths[i]))
+    tblW = tblPr.find(_qn('w:tblW'))
+    if tblW is None:
+        tblW = tblPr.makeelement(_qn('w:tblW'), {})
+        tblPr.append(tblW)
+    tblW.set(_qn('w:type'), 'dxa')
+    tblW.set(_qn('w:w'), str(sum(widths)))
+    ind = tblPr.find(_qn('w:tblInd'))
+    if ind is None:
+        ind = tblPr.makeelement(_qn('w:tblInd'), {})
+        tblPr.append(ind)
+    ind.set(_qn('w:type'), 'dxa')
+    ind.set(_qn('w:w'), '0')
+    for old in tblPr.findall(_qn('w:jc')):
+        tblPr.remove(old)
+    layout = tblPr.find(_qn('w:tblLayout'))
+    if layout is None:
+        layout = tblPr.makeelement(_qn('w:tblLayout'), {})
+        tblPr.append(layout)
+    layout.set(_qn('w:type'), 'fixed')
+    for row in table.rows:
+        for ci, c in enumerate(row.cells):
+            tcPr = c._tc.find(_qn('w:tcPr'))
+            if tcPr is None:
+                continue
+            w_el = tcPr.find(_qn('w:tcW'))
+            if w_el is None:
+                w_el = tcPr.makeelement(_qn('w:tcW'), {})
+                tcPr.append(w_el)
+            w_el.set(_qn('w:type'), 'dxa')
+            w_el.set(_qn('w:w'), str(widths[ci] if ci < len(widths) else widths[-1]))
+
+
 def _add_nested_table(container, rows):
     """在 cell/文档里插入带边框三线表：表头加粗，正文小四宋体"""
     from docx.shared import Pt as _Pt
@@ -1514,12 +1577,21 @@ def _add_nested_table(container, rows):
                 qn('w:val'): 'single', qn('w:sz'): '4', qn('w:space'): '0',
                 qn('w:color'): '000000'})
             borders.append(el)
-    # 撑满父单元格宽度（左右边框与父表对齐）；文档级表格对齐版心
+    # 数据表按内容给列宽（紧凑、靠左）；不撑满整栏，否则列间空白过大
     parent_tc = getattr(container, "_tc", None)
-    fb = None
-    if parent_tc is None and hasattr(container, "sections"):
-        fb = _doc_text_width_dxa(container)
-    _stretch_table_full_width(table, parent_tc, fallback_width=fb)
+    available = None
+    if parent_tc is not None:
+        tcPr = parent_tc.find(qn('w:tcPr'))
+        if tcPr is not None:
+            tw = tcPr.find(qn('w:tcW'))
+            if tw is not None and tw.get(qn('w:w')):
+                try:
+                    available = int(tw.get(qn('w:w'))) - 216
+                except Exception:
+                    available = None
+    elif hasattr(container, "sections"):
+        available = _doc_text_width_dxa(container)
+    _size_table_compact(table, rows, available)
     for ri, row in enumerate(rows):
         for ci in range(ncols):
             val = row[ci] if ci < len(row) else ""
@@ -1600,7 +1672,11 @@ def _is_md_table_row(line):
 
 
 def _is_md_separator(line):
-    return line.replace("|", "").replace("-", "").replace(" ", "").replace(":", "") == ""
+    # 必须真的有 "-"：否则 "|  |  |  |" 这种空数据行会被当成 |---|---| 分隔行，
+    # 表格会被从这里切断，剩下一条空行变成独立表格。
+    if "-" not in line:
+        return False
+    return _re.sub(r"[|\-\s:]", "", line) == ""
 
 
 def _parse_md_row(line):
