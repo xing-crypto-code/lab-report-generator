@@ -1371,15 +1371,15 @@ def _cell_side_margin_dxa(container_tc, default=108):
 
 
 def _stretch_table_full_width(table, container_tc=None, fallback_width=None):
-    """把表格宽度撑满父单元格的【全部内宽】，并用负 tblInd 抵消单元格左边距，
-    使表格左右边框与主表外框（及上下各行的 cell 边框）严格对齐。
+    """把表格宽度撑满父单元格的内容区，并让左右边框留出单元格边距。
+    表格边框不再与单元格边框重合：宽度扣掉左右边距后，两侧各留一条白。
 
-    三条铁律（之前边框参差的根因）：
+    两条铁律（之前边框参差的根因）：
     1. tblW 必须严格等于 gridCols 之和，否则 Word 按 gridCols 排版、右边框跑出去；
     2. 绝不能设 jc=center —— 居中会让任何窄表永远贴不齐右边；
-    3. 表格放进单元格后默认在左边距（108 dxa）处起始、右侧也留 108，
-       所以要么把宽度减 216（右边还是会差一条线），要么宽度用满 + tblInd=-108
-       把左边界顶到单元格内框上。本函数用后者，两侧都严丝合缝。
+    3. 单元格自带左右边距（默认 108 dxa），宽度取满再配 tblInd=-108 会让表格边框压在单元格边框上，
+       所以现在宽度 = 单元格宽 - 左右边距，tblInd = 0。
+       把左边界顶到单元格内框上。现在改为扣掉左右边距、tblInd=0，两侧都留白。
     """
     from docx.oxml.ns import qn as _qn
     tbl = table._tbl
@@ -1416,6 +1416,10 @@ def _stretch_table_full_width(table, container_tc=None, fallback_width=None):
     if not target:
         return
 
+    # 嵌套在单元格里时，给左右各留出单元格边距，别让表格边框压在单元格边框上
+    if container_tc is not None:
+        target = max(target - left_mar - right_mar, 1)
+
     # 等分列宽，写进 gridCol（末列补齐余数保证总和精确）
     per = target // ncols
     for i, c in enumerate(cols):
@@ -1430,13 +1434,13 @@ def _stretch_table_full_width(table, container_tc=None, fallback_width=None):
     tblW.set(_qn('w:type'), 'dxa')
     tblW.set(_qn('w:w'), str(target))
 
-    # 负左缩进，把表格左边界顶到单元格内框上（抵消单元格左边距）
+    # tblInd=0：表格从单元格内容区左沿开始（宽度已扣掉左右边距，右边自然留白）
     tblInd = tblPr.find(_qn('w:tblInd'))
     if tblInd is None:
         tblInd = tblPr.makeelement(_qn('w:tblInd'), {})
         tblPr.append(tblInd)
     tblInd.set(_qn('w:type'), 'dxa')
-    tblInd.set(_qn('w:w'), str(-left_mar if container_tc is not None else 0))
+    tblInd.set(_qn('w:w'), '0')
 
     # 布局固定，避免 Word 自动重排改变列宽
     layout = tblPr.find(_qn('w:tblLayout'))
