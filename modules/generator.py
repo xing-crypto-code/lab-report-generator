@@ -225,6 +225,33 @@ def _match_placeholder(text: str):
     return s, w, h
 
 
+def _merge_list_continuations(items):
+    """把列表项的"续行"并回列表项。
+
+    模型常写成三行：
+        1. 闭环电压放大倍数
+        Avf＝Av/(1＋Av·Fv)
+        式中 Av 为开环电压放大倍数……
+    后两行没有编号，过去会被 autonumber 当成新的列表项，于是编号错成 1./2./3.。
+    这里在编号之前先合并：列表项未以句末标点收尾，就把后续无编号段落并进来。
+    """
+    out = []
+    for it in items:
+        prev = out[-1] if out else None
+        if (prev is not None and prev["kind"] == "list" and it["kind"] == "para"
+                and not prev["text"].rstrip().endswith(("。", "；", "！", "？", ";", "!", "?"))):
+            body = prev["text"].rstrip()
+            tail = it["text"].strip()
+            # 短标题后接内容 → 用冒号衔接，读起来像"标题：内容"；
+            # 已经有冒号的行不要再补一个，否则会出现"：…："这种双冒号。
+            joiner = ("：" if len(body) <= 30 and "：" not in body and ":" not in body
+                      else " ")
+            prev["text"] = body + joiner + tail
+            continue
+        out.append(dict(it))
+    return out
+
+
 def _autonumber_paragraphs(items):
     """给散落的无编号正文自动加 `1.` `2.` 序号。
 
@@ -310,6 +337,7 @@ def _iter_render_items(content):
                 items.append({"kind": "list", "text": s})
             else:
                 items.append({"kind": "para", "text": s})
+    items = _merge_list_continuations(items)
     items = _autonumber_paragraphs(items)
     items = _normalize_numbering(items)
     items = _renumber_questions(items)
