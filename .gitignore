@@ -1,20 +1,23 @@
-# Python
+# ==== Python ====
 __pycache__/
 *.py[cod]
 *.egg-info/
+.eggs/
 dist/
 build/
 *.egg
 
-# 虚拟环境
-venv/
+# ==== 虚拟环境 ====
 .venv/
+venv/
 env/
 
-# 环境配置（含敏感 API Key）
+# ==== 环境变量与密钥（含 API Key，绝不可入库） ====
 .env
+.env.*
+!.env.example
 
-# 用户上传和输出（运行时文件夹）
+# ==== 运行产物（用户上传/输出）====
 uploads/*
 outputs/*
 temp/*
@@ -22,32 +25,38 @@ temp/*
 !outputs/.gitkeep
 !temp/.gitkeep
 
-# 依赖包（本机 pip 装到 libs/ 的第三方库，1.4GB，绝不入库）
+# ==== 本机依赖 libs（pip --target，1.4GB 不入库）====
 libs/
 
-# 模板备份（rebake 自动生成，含旧版模板）
+# ==== 模板备份（rebake 自动生成）====
 templates/*.bak
 
-# 知识库索引（由 kb/ 里的文件生成，可随时重建）
+# ==== 知识库索引（由 kb/ 内容可随时重建）====
 kb/index.sqlite
 kb/index.sqlite-journal
 
-# 渲染/调试产物
-screenshots/dom.txt
+# ==== pip 临时构建/缓存/卸载目录（install_deps.py 残留）====
+pip-*/
+temp/pip-*/
 
-# 外部工具（DSH 沙箱）的体检产物，与本项目无关
+# ==== 渲染/调试产物 ====
+screenshots/dom.txt
+screenshots/*.png
+
+# ==== 外部工具（如 DSH 沙箱体检产物）====
 acl-recovery/
 
-# IDE
+# ==== IDE ====
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# OS
+# ==== OS ====
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Gradio
+# ==== Gradio ====
 gradio_cached_examples/
 flagged/
