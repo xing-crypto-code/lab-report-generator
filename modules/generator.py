@@ -642,10 +642,29 @@ def _finalize_document(doc):
                 if b is not None and b.get(_qn('w:val')) not in ('0', 'false'):
                     is_heading = True
             break
-        # 行距：缺失或非 exact 一律补齐为统一固定值
+        # 行距：缺失或非 exact 一律补齐为统一固定值；
+        # 但字号大于固定行距（如 22 磅的"成都大学实验报告"大标题）时不能套固定值，
+        # 否则字顶会被裁掉一截——这类段落保持自动行高。
+        max_sz = 0.0
+        for _r in p.iter(_qn('w:r')):
+            _rPr = _r.find(_qn('w:rPr'))
+            if _rPr is not None:
+                _sz = _rPr.find(_qn('w:sz'))
+                if _sz is not None and _sz.get(_qn('w:val')):
+                    try:
+                        max_sz = max(max_sz, int(_sz.get(_qn('w:val'))) / 2)
+                    except Exception:
+                        pass
         sp = pPr.find(_qn('w:spacing'))
-        need_sp = True
-        if sp is not None and sp.get(_qn('w:line')) is not None:
+        big_text = max_sz > BODY_LINE_SPACING_EXACT_PT - 2
+        if big_text:
+            if sp is None:
+                sp = pPr.makeelement(_qn('w:spacing'), {})
+                pPr.append(sp)
+            sp.set(_qn('w:line'), '0')
+            sp.set(_qn('w:lineRule'), 'atLeast')
+        need_sp = not big_text
+        if not big_text and sp is not None and sp.get(_qn('w:line')) is not None:
             try:
                 need_sp = (abs(int(sp.get(_qn('w:line'))) - int(BODY_LINE_SPACING_EXACT_PT * 20)) > 0
                            or sp.get(_qn('w:lineRule')) != 'exact')
@@ -1014,7 +1033,7 @@ def _set_cell_text(cell, content):
             elif kind == "list":
                 if not used_first:
                     _force_left(first)
-                    _apply_para_format(first, first_line_indent_chars=2)
+                    _apply_para_format(first, first_line_indent_chars=0)
                     run = first.add_run(it["text"])
                     _apply_run_style(run, BODY_SIZE_PT, bold=False)
                     used_first = True
@@ -1056,9 +1075,9 @@ def _insert_styled_para(tc, anchor, text, heading=False, list_item=False):
             _apply_run_style(run, HEADING_SIZE_PT, bold=True,
                              char_spacing_twips=HEADING_CHAR_SPACING_TWIPS)
     else:
-        # 编号项与普通正文用同一种缩进：首行缩进 2 字符。
-        # 以前编号项用"左缩进+悬挂"，第一行顶格、续行缩进，和正文混排时看着不齐。
-        _apply_para_format(para, first_line_indent_chars=2)
+        # 编号项顶格（不缩进、也不悬挂）：表格里的 1. 2. 3. 与栏目线对齐，
+        # 普通叙述段才是首行缩进 2 字符。
+        _apply_para_format(para, first_line_indent_chars=0 if list_item else 2)
         for run in para.runs:
             _apply_run_style(run, BODY_SIZE_PT, bold=False)
     return p
@@ -1653,7 +1672,7 @@ def _append_content(after_para, doc, content):
                                  char_spacing_twips=HEADING_CHAR_SPACING_TWIPS)
             elif kind == "list":
                 _force_left(p)
-                _apply_para_format(p, first_line_indent_chars=2)
+                _apply_para_format(p, first_line_indent_chars=0)
                 _apply_run_style(run, BODY_SIZE_PT, bold=False)
             else:
                 _force_left(p)
@@ -1706,7 +1725,7 @@ def _append_heading_with_content(doc, section_name, content):
         elif kind == "list":
             p = doc.add_paragraph()
             _force_left(p)
-            _apply_para_format(p, first_line_indent_chars=2)
+            _apply_para_format(p, first_line_indent_chars=0)
             _apply_run_style(p.add_run(it["text"]), BODY_SIZE_PT, bold=False)
         else:
             p = doc.add_paragraph()
