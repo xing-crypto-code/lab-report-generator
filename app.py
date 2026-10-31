@@ -462,27 +462,27 @@ CSS = r"""
 
 /* ── 白天草原（默认）── */
 :root {
-  --bg0: #7d9c63;          /* 草地底（压低饱和） */
-  --bg1: #f6ecd2;          /* 羊皮纸卡片 */
-  --bg2: #e8d8b0;          /* 深羊皮纸 / hover */
+  --bg0: #4e6b42;          /* 草地底（加深，让前景卡片/文字更突出） */
+  --bg1: #fdf6e8;          /* 羊皮纸卡片（提亮，墨字更清晰） */
+  --bg2: #f0e2c4;          /* 深羊皮纸 / hover */
   --wood: #8b5e3c;         /* 木框 */
-  --wood-dk: #5c3a21;      /* 木框暗部 */
-  --wood-lt: #b07d4f;      /* 木框亮部 */
+  --wood-dk: #3f250f;      /* 木框暗部（加深，描边更分明） */
+  --wood-lt: #c58f58;      /* 木框亮部（提亮） */
   --stone: #9a9a94;        /* 石质 */
   --stone-dk: #5e5e58;
-  --line: #c9b48e;         /* 常规描边 */
-  --line2: #6b4f2f;        /* 强调描边 */
-  --ink: #3a2a1a;          /* 正文墨色 */
-  --ink2: #58432c;
-  --dim: #7a6344;
-  --acc: #5b8c3e;          /* 主色 苔绿（确认/生成） */
-  --acc-lt: #7cb342;
-  --acc2: #d97a2b;         /* 副色 琥珀（警告/强调） */
-  --gold: #e8b53c;         /* 金币黄 */
-  --red: #b5342c;
-  --blue: #3c6ea5;
-  --shadow: 4px 4px 0 0 rgba(58,42,26,.30);
-  --shadow-sm: 2px 2px 0 0 rgba(58,42,26,.30);
+  --line: #cbb48c;         /* 常规描边 */
+  --line2: #7a3512;        /* 强调描边（加深，更醒目） */
+  --ink: #1f170e;          /* 正文墨色（近黑，最强对比） */
+  --ink2: #443522;         /* 二级文字 */
+  --dim: #55442c;          /* 占位符/弱文字（加深，可读性↑） */
+  --acc: #4a732f;          /* 主色 苔绿（确认/生成） */
+  --acc-lt: #68983f;
+  --acc2: #c05f17;         /* 副色 琥珀（加深） */
+  --gold: #c99712;         /* 金币黄（加深） */
+  --red: #9c221b;
+  --blue: #2c689b;
+  --shadow: 4px 4px 0 0 rgba(24,16,8,.38);
+  --shadow-sm: 2px 2px 0 0 rgba(24,16,8,.38);
   --font: 'Pixelify Sans', 'Silkscreen', 'SimSun', '宋体', monospace;
   --body: 'SimSun', '宋体', 'Microsoft YaHei', serif;
   --mono: 'VT323', 'Courier New', monospace;
@@ -491,27 +491,27 @@ CSS = r"""
 
 /* ── 夜晚洞穴（暗）── */
 :root[data-ui-theme="dark"] {
-  --bg0: #1c2438;
-  --bg1: #2a2233;
-  --bg2: #382c42;
+  --bg0: #141a2a;
+  --bg1: #2f2a3e;          /* 卡片（稍提亮，与纯背景分层） */
+  --bg2: #3d334e;
   --wood: #4a3226;
-  --wood-dk: #2a1c14;
-  --wood-lt: #6b4a34;
+  --wood-dk: #201109;      /* 暗部更深，描边更清 */
+  --wood-lt: #7a5538;      /* 亮部提亮 */
   --stone: #4a4a55;
-  --stone-dk: #2a2a32;
+  --stone-dk: #24242c;
   --line: #4a3d52;
-  --line2: #7a5c3a;
-  --ink: #efe4cf;
-  --ink2: #d3c2a5;
-  --dim: #9c8870;
-  --acc: #6fa84a;
-  --acc-lt: #8ecb5e;
-  --acc2: #e08c3a;
-  --gold: #f0c24c;
-  --red: #d9554a;
-  --blue: #5b93d1;
-  --shadow: 4px 4px 0 0 rgba(0,0,0,.55);
-  --shadow-sm: 2px 2px 0 0 rgba(0,0,0,.55);
+  --line2: #a8814d;        /* 强调描边提亮 */
+  --ink: #f7efdf;          /* 正文提亮，对比最强 */
+  --ink2: #e0d3bb;         /* 二级文字提亮 */
+  --dim: #b4a488;          /* 弱文字提亮（暗底上可读） */
+  --acc: #72b34e;
+  --acc-lt: #93cf70;
+  --acc2: #eea04a;
+  --gold: #f4cc5e;
+  --red: #e05f50;
+  --blue: #6ea3e0;
+  --shadow: 4px 4px 0 0 rgba(0,0,0,.6);
+  --shadow-sm: 2px 2px 0 0 rgba(0,0,0,.6);
 }
 
 /* ── 基础 ── */
