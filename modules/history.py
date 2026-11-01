@@ -100,9 +100,14 @@ def render_history_html() -> str:
     cards = []
     for i in items:
         url = _file_url(i["docx"])
+        key = _htmlesc(i["docx"])
+        title = _htmlesc(i.get("title", '未命名'))
         portions = [
             "<div class='hist-card'>",
-            f"<div class='h-title'>{_htmlesc(i.get('title','未命名'))}</div>",
+            "<div class='hist-head'>",
+            f"<div class='h-title' title='{title}'>{title}</div>",
+            f"<button class='h-del' data-path=\"{key}\" title='从列表移除'>✕</button>",
+            "</div>",
             f"<div class='h-meta'>{i.get('time','')} · {_htmlesc(i.get('model','') or '—')}</div>",
             f"<a class='h-dl' href='{url}' download>下载 .docx</a>",
             "</div>",

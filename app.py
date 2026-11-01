@@ -344,6 +344,16 @@ def refresh_history_ui():
     return history_mod.render_history_html()
 
 
+def delete_history_ui(docx_path):
+    """从历史列表移除一条记录（不删文件本体），返回刷新后的面板"""
+    try:
+        if docx_path:
+            history_mod.delete_record(docx_path.strip())
+    except Exception:
+        pass
+    return history_mod.render_history_html()
+
+
 def composer_submit(message, template_file, api_key, api_base, model, use_builtin,
                     progress=gr.Progress()):
     """统一入口（DeepSeek-Harness 式单框）：
@@ -625,9 +635,10 @@ gradio-app {
 .steps-bar .step { display: inline-flex; align-items: center; gap: 7px; }
 .steps-bar .step b {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 18px; height: 18px; flex: 0 0 auto;
-  background: var(--app-fg); color: var(--app-bg);
-  border-radius: 999px; font-size: 11px; font-weight: 700;
+  width: 17px; height: 17px; flex: 0 0 auto;
+  background: var(--app-card); color: var(--app-fg-muted);
+  border: 1px solid var(--app-border-strong);
+  border-radius: 999px; font-size: 10.5px; font-weight: 600;
 }
 
 /* ─────────── 按钮 ─────────── */
@@ -995,17 +1006,31 @@ input[type="checkbox"]:focus-visible {
 .pix-statusbar,
 .preview-panel .pix-statusbar {
   font-family: var(--app-font) !important;
-  font-size: 13px !important;
+  font-size: 12.5px !important;
   font-weight: 400 !important;
   color: var(--app-fg-muted) !important;
   text-align: center;
-  padding: 36px 20px !important;
+  padding: 24px 20px 22px !important;
   line-height: 1.6;
   letter-spacing: 0;
   text-shadow: none !important;
 }
 .preview-panel .pix-statusbar * { color: var(--app-fg-muted) !important; }
-/* 有内容时取消居中，让预览铺开 */
+
+/* 空状态骨架：几条灰条暗示「这里会是一页报告」 */
+.preview-panel .pix-statusbar::before {
+  content: "";
+  display: block;
+  width: 176px;
+  height: 5px;
+  margin: 0 auto 46px;
+  border-radius: 3px;
+  background: var(--app-muted);
+  box-shadow:
+    0 14px 0 0 var(--app-muted),
+    28px 28px 0 0 var(--app-muted),
+    0 42px 0 0 var(--app-muted);
+}
 .preview-panel:has(.r-wrap) { display: block; padding: 12px !important; }
 
 /* ─────────── 文档预览（纸张）─────────── */
@@ -1185,22 +1210,28 @@ ul.options li:hover, .options .item:hover { background: var(--app-muted) !import
 .prose li { margin: 3px 0; }
 hr { border: none !important; border-top: 1px solid var(--app-border) !important; margin: 20px 0 !important; }
 
-/* ─────────── 主题切换按钮 ─────────── */
+/* ─────────── 主题切换按钮：无边框图标，hover 才显底 ─────────── */
 #themeBtn {
   position: fixed !important;
-  top: 18px; right: 20px; z-index: 60;
-  width: 36px !important; height: 36px !important;
-  min-width: 36px !important; padding: 0 !important;
+  top: 18px; right: 18px; z-index: 60;
+  width: 32px !important; height: 32px !important;
+  min-width: 32px !important; padding: 0 !important;
   display: flex; align-items: center; justify-content: center;
-  background: var(--app-card) !important;
-  color: var(--app-fg) !important;
-  border: 1px solid var(--app-border) !important;
-  border-radius: var(--app-radius) !important;
-  box-shadow: var(--app-shadow-xs) !important;
+  background: transparent !important;
+  color: var(--app-fg-muted) !important;
+  border: 1px solid transparent !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
   font-size: 14px !important;
-  transition: background-color .15s ease !important;
+  opacity: .75;
+  transition: background-color .15s ease, color .15s ease, opacity .15s ease !important;
 }
-#themeBtn:hover { background: var(--app-muted) !important; }
+#themeBtn:hover {
+  background: var(--app-muted) !important;
+  color: var(--app-fg) !important;
+  border-color: var(--app-border) !important;
+  opacity: 1;
+}
 
 /* ─────────── 滚动条 ─────────── */
 * { scrollbar-width: thin; scrollbar-color: var(--app-border-strong) transparent; }
@@ -1291,6 +1322,18 @@ hr { border: none !important; border-top: 1px solid var(--app-border) !important
   margin-top: 2px;
 }
 
+/* 暗色下 primary 用低饱和浅色 + 深字，比纯白满面积柔和（shadcn 的做法） */
+html[data-ui-theme="dark"] body #appShell #newReportBtn {
+  background: #e5e5e5 !important;
+  border-color: #e5e5e5 !important;
+  color: #171717 !important;
+}
+html[data-ui-theme="dark"] body #appShell #newReportBtn:hover {
+  background: #d4d4d4 !important;
+  border-color: #d4d4d4 !important;
+  color: #171717 !important;
+}
+
 /* 侧栏里的折叠面板：去卡片化，做成小节标题 */
 .side-acc {
   border: none !important;
@@ -1346,6 +1389,32 @@ hr { border: none !important; border-top: 1px solid var(--app-border) !important
   font-size: 12px !important; font-weight: 550 !important;
   line-height: 1.35 !important;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  min-width: 0;
+}
+.hist-card .hist-head {
+  display: flex !important; align-items: flex-start; gap: 4px;
+}
+.hist-card .h-del {
+  flex: 0 0 auto;
+  width: 17px !important; height: 17px !important;
+  min-width: 17px !important; min-height: 17px !important;
+  padding: 0 !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  font-size: 10px !important; line-height: 1 !important;
+  color: var(--app-fg-muted) !important;
+  background: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+  opacity: 0; cursor: pointer;
+  transition: opacity .15s ease, color .15s ease, background-color .15s ease !important;
+}
+.hist-card:hover .h-del { opacity: .72; }
+.hist-card .h-del:hover {
+  opacity: 1 !important;
+  color: var(--app-fg) !important;
+  background: var(--app-muted) !important;
 }
 /* 下载链：做成轻量文字链，别抢过标题 */
 .hist-card a, .prose .hist-card a {
@@ -1531,6 +1600,33 @@ function(b){
 }
 """
 
+# ── 历史卡「✕」：把待删路径写进隐藏 Textarea，触发后端删除 ──
+# 绑定策略：用事件委托挂在 document 上，只装一次，后续渲染出的卡片自动生效。
+HIST_DEL_JS = r"""
+function(b){
+  if (window.__histDelBound) return [];
+  window.__histDelBound = true;
+  document.addEventListener('click', (ev) => {
+    const btn = ev.target.closest && ev.target.closest('.hist-card .h-del');
+    if (!btn) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const p = btn.getAttribute('data-path') || '';
+    const host = document.getElementById('histDelTarget');
+    const ta = host ? host.querySelector('textarea, input') : null;
+    if (!ta) return;
+    const proto = ta.tagName === 'TEXTAREA'
+      ? window.HTMLTextAreaElement.prototype
+      : window.HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+    setter.call(ta, p);
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    ta.dispatchEvent(new Event('change', { bubbles: true }));
+  }, true);
+  return [];
+}
+"""
+
 
 def build_ui():
     with gr.Blocks(title="实验报告工坊") as demo:
@@ -1564,6 +1660,8 @@ def build_ui():
                 with gr.Accordion("历史记录", open=True, elem_classes="side-acc"):
                     refresh_btn = gr.Button("刷新", size="sm", elem_id="refreshBtn")
                     history_out = gr.HTML(history_mod.render_history_html())
+                    # 存放「待删除记录」的路径，由卡片上的 ✕ 通过 JS 写入
+                    del_target = gr.Textbox(value="", visible="hidden", elem_id="histDelTarget")
 
                 gr.HTML("""
                 <div class="side-foot">
@@ -1693,6 +1791,13 @@ def build_ui():
             outputs=[history_out],
         )
 
+        # 历史卡上的 ✕：把路径写进隐藏框，再走删除流程
+        del_target.change(
+            fn=delete_history_ui,
+            inputs=[del_target],
+            outputs=[history_out],
+        ).then(fn=lambda: "", inputs=[], outputs=[del_target])
+
         # ── 新建报告：聚焦输入框，提示开始新一轮 ──
         new_report_btn.click(
             fn=None, inputs=[], outputs=[],
@@ -1706,6 +1811,7 @@ def build_ui():
         # ── 明暗主题切换（客户端 JS，不入库、不耗 token）──
         theme_btn.click(fn=None, inputs=[], outputs=[], js=TOGGLE_JS)
         demo.load(fn=None, inputs=[], outputs=[], js=RESTORE_JS)
+        demo.load(fn=None, inputs=[], outputs=[], js=HIST_DEL_JS)
 
     return demo
 
