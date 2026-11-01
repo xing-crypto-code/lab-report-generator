@@ -793,17 +793,32 @@ textarea:focus, input:focus {
   color: var(--app-fg) !important;
   text-shadow: none !important;
 }
+/* 上传卡片区：亮暗都写死字面值，绕开 gradio 对 --app-* / --neutral-* 的局部覆盖 */
+#tplUpload,
+#tplUpload .form,
+#tplUpload [data-testid="file"],
+#tplUpload [data-testid="file"] > div,
+#tplUpload [data-testid="file"] > div > div,
+#tplUpload .wrap,
+#tplUpload .boundedheight {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border-color: #e5e5e5 !important;
+}
 #tplUpload .upload-container,
 #tplUpload [data-testid="file-upload"] {
-  border: 1px dashed var(--app-border-strong) !important;
+  border: 1px dashed #d4d4d4 !important;
   border-radius: calc(var(--app-radius) - 2px) !important;
-  background: var(--app-bg-subtle) !important;
+  background: #fafafa !important;
+  background-color: #fafafa !important;
   background-image: none !important;
   box-shadow: none !important;
   min-height: 46px !important;
   display: flex !important; align-items: center !important; justify-content: center !important;
   cursor: pointer !important;
-  color: var(--app-fg-muted) !important;
+  color: #737373 !important;
   font-family: var(--app-font) !important;
   font-size: 13px !important;
   font-weight: 400 !important;
@@ -811,21 +826,22 @@ textarea:focus, input:focus {
 }
 #tplUpload .upload-container:hover,
 #tplUpload [data-testid="file-upload"]:hover {
-  background: var(--app-muted) !important;
-  border-color: var(--app-fg-muted) !important;
-  color: var(--app-fg) !important;
+  background: #f5f5f5 !important;
+  background-color: #f5f5f5 !important;
+  border-color: #737373 !important;
+  color: #0a0a0a !important;
 }
 #tplUpload .upload-container > div,
 #tplUpload [data-testid="upload-text"] {
-  color: var(--app-fg-muted) !important;
+  color: #737373 !important;
   font-family: var(--app-font) !important;
   font-size: 13px !important;
   font-weight: 400 !important;
 }
 #tplUpload .upload-container:hover > div,
-#tplUpload .upload-container:hover [data-testid="upload-text"] { color: var(--app-fg) !important; }
+#tplUpload .upload-container:hover [data-testid="upload-text"] { color: #0a0a0a !important; }
 #tplUpload svg, #tplUpload [class*="icon"] {
-  color: var(--app-fg-muted) !important; fill: var(--app-fg-muted) !important;
+  color: #737373 !important; fill: #737373 !important;
   width: 18px !important; height: 18px !important;
 }
 #tplUpload label, #tplUpload .block-label {
@@ -975,7 +991,7 @@ input[type="checkbox"]:focus-visible {
   box-shadow: none;
   font-family: "Songti SC", "SimSun", "宋体", serif;
 }
-:root[data-ui-theme="dark"] .r-wrap { background: #ffffff; color: #18181b; }
+[data-ui-theme="dark"] .r-wrap { background: #ffffff; color: #18181b; }
 .r-toolbar {
   font-family: var(--app-font); font-size: 12px; color: #71717a;
   border-bottom: 1px solid #e4e4e7; padding-bottom: 8px; margin-bottom: 12px;
@@ -1031,14 +1047,30 @@ input[type="checkbox"]:focus-visible {
 .hist-card:hover { border-color: var(--app-border-strong); box-shadow: var(--app-shadow-sm); }
 .hist-card .h-title { font-size: 13.5px; font-weight: 600; color: var(--app-fg); }
 .hist-card .h-meta { font-size: 12px; color: var(--app-fg-muted); margin: 2px 0 8px; }
-.hist-card a {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 12.5px; font-weight: 550; color: var(--app-primary-fg);
-  background: var(--app-primary); border: 1px solid var(--app-primary);
-  border-radius: 8px; padding: 6px 11px; text-decoration: none;
-  transition: background-color .15s ease;
+/* 下载按钮：卡片化 secondary（白底/卡片色 + 细边 + 深色文字），
+   覆盖 gradio 给 .prose a 注入的 accent 蓝字，去掉"黑色块+蓝字"的贴图感 */
+.hist-card a,
+.hist-card a:visited,
+.hist-card a:active,
+.prose .hist-card a {
+  display: inline-flex !important; align-items: center !important; gap: 5px !important;
+  font-size: 12.5px !important; font-weight: 550 !important;
+  color: var(--app-fg) !important;
+  background: var(--app-muted) !important;
+  border: 1px solid var(--app-border) !important;
+  border-radius: 8px !important;
+  padding: 6px 11px !important;
+  text-decoration: none !important;
+  box-shadow: none !important;
+  transition: background-color .15s ease, border-color .15s ease !important;
 }
-.hist-card a:hover { background: var(--app-primary-hover); border-color: var(--app-primary-hover); }
+.hist-card a:hover,
+.prose .hist-card a:hover {
+  background: var(--app-muted-hover) !important;
+  border-color: var(--app-border-strong) !important;
+  color: var(--app-fg) !important;
+  text-decoration: none !important;
+}
 
 /* ─────────── 折叠面板（卡片化）─────────── */
 details, .accordion, [data-testid="accordion"], .gr-accordion {
@@ -1257,6 +1289,7 @@ hr { border: none !important; border-top: 1px solid var(--app-border) !important
 }
 .hist-card .h-meta { font-size: 10.5px !important; margin: 3px 0 7px !important; }
 .hist-card a { font-size: 11.5px !important; padding: 4px 9px !important; border-radius: 6px !important; }
+.hist-card a, .prose .hist-card a { color: var(--app-fg) !important; }
 .hist-empty { font-size: 12px; color: var(--app-fg-muted); line-height: 1.6; padding: 4px 2px; }
 
 /* ─────────── 响应式 ─────────── */
@@ -1275,6 +1308,94 @@ hr { border: none !important; border-top: 1px solid var(--app-border) !important
   .app-header .brand-text p { font-size: 11.5px; }
   .steps-bar { font-size: 11.5px; padding: 9px 12px; gap: 5px 14px; }
   .out-row { flex-direction: column; }
+}
+
+"""
+
+
+# ── 暗色主题覆盖（原生 <style> 注入，绕开 gradio 作用域前缀）──
+# gradio 会把 css= 里的规则全部加 .gradio-container...contain 前缀，导致
+# :root[dark] 开头或特异性不够的规则永不命中。这里用 gr.HTML 注入原生 <style>，
+# 选择器走 html[data-ui-theme="dark"] body #appShell（#appShell 在 .contain 内），
+# 特异性 (2,x,x) 稳赢一切 scoped 亮色规则；两条 copy 确保命中。
+DARK_CSS = r"""
+html[data-ui-theme="dark"] body #appShell #tplUpload,
+html[data-ui-theme="dark"] body #appShell #tplUpload .form,
+html[data-ui-theme="dark"] body #appShell #tplUpload [data-testid="file"],
+html[data-ui-theme="dark"] body #appShell #tplUpload [data-testid="file"] > div,
+html[data-ui-theme="dark"] body #appShell #tplUpload [data-testid="file"] > div > div,
+html[data-ui-theme="dark"] body #appShell #tplUpload .wrap,
+html[data-ui-theme="dark"] body #appShell #tplUpload .boundedheight {
+  background: #171717 !important;
+  background-color: #171717 !important;
+  border-color: #262626 !important;
+}
+html[data-ui-theme="dark"] body #appShell #tplUpload .upload-container,
+html[data-ui-theme="dark"] body #appShell #tplUpload [data-testid="file-upload"] {
+  background: #111111 !important;
+  background-color: #111111 !important;
+  border-color: #404040 !important;
+  color: #a3a3a3 !important;
+}
+html[data-ui-theme="dark"] body #appShell #tplUpload .upload-container > div,
+html[data-ui-theme="dark"] body #appShell #tplUpload [data-testid="upload-text"] {
+  color: #a3a3a3 !important;
+}
+html[data-ui-theme="dark"] body #appShell #tplUpload svg,
+html[data-ui-theme="dark"] body #appShell #tplUpload [class*="icon"] {
+  color: #a3a3a3 !important;
+  fill: #a3a3a3 !important;
+}
+html[data-ui-theme="dark"] body #appShell #tplUpload .upload-container:hover {
+  background: #262626 !important;
+  border-color: #737373 !important;
+  color: #fafafa !important;
+}
+ /* 浮动标签（gradio 的 block-label.float）：亮色下是白底+虚线，暗色要改成深底 */
+html[data-ui-theme="dark"] body #appShell #tplUpload label,
+html[data-ui-theme="dark"] body #appShell #tplUpload [data-testid="block-label"],
+html[data-ui-theme="dark"] body #appShell #tplUpload .block-label {
+  background: #171717 !important;
+  background-color: #171717 !important;
+  color: #a3a3a3 !important;
+  border-color: #404040 !important;
+}
+html[data-ui-theme="dark"] body #appShell #tplUpload label svg,
+html[data-ui-theme="dark"] body #appShell #tplUpload [data-testid="block-label"] svg {
+  color: #a3a3a3 !important;
+  stroke: #a3a3a3 !important;
+  fill: none !important;
+}
+ /* 投放区内的 svg 描边与「- 或 -」分隔文字 */
+html[data-ui-theme="dark"] body #appShell #tplUpload svg,
+html[data-ui-theme="dark"] body #appShell #tplUpload svg path,
+html[data-ui-theme="dark"] body #appShell #tplUpload svg polyline,
+html[data-ui-theme="dark"] body #appShell #tplUpload svg line {
+  color: #a3a3a3 !important;
+  stroke: #a3a3a3 !important;
+}
+html[data-ui-theme="dark"] body #appShell #tplUpload .or,
+html[data-ui-theme="dark"] body #appShell #tplUpload [data-testid="upload-text"] {
+  color: #a3a3a3 !important;
+}
+/* 历史卡 */
+html[data-ui-theme="dark"] body #appShell .hist-card {
+  background: #171717 !important;
+  border-color: #262626 !important;
+}
+html[data-ui-theme="dark"] body #appShell .hist-card .h-title { color: #fafafa !important; }
+html[data-ui-theme="dark"] body #appShell .hist-card .h-meta { color: #a3a3a3 !important; }
+html[data-ui-theme="dark"] body #appShell .hist-card a,
+html[data-ui-theme="dark"] body #appShell .hist-card a:visited,
+html[data-ui-theme="dark"] body #appShell .hist-card a:active {
+  background: #262626 !important;
+  border-color: #404040 !important;
+  color: #fafafa !important;
+}
+html[data-ui-theme="dark"] body #appShell .hist-card a:hover {
+  background: #303030 !important;
+  border-color: #525252 !important;
+  color: #fafafa !important;
 }
 """
 
@@ -1331,6 +1452,9 @@ def build_ui():
         theme_btn = gr.Button("☾", elem_id="themeBtn", variant="secondary")
 
         with gr.Row(elem_id="appShell"):
+
+            # 原生暗色覆盖（详见 DARK_CSS 定义）：经 gr.HTML 注入，绕开 gradio 作用域前缀
+            gr.HTML(f'<style>{DARK_CSS}</style>')
 
             # ══════════════════════════════════════════
             #  侧栏：品牌 / 新建 / 历史 / 状态
