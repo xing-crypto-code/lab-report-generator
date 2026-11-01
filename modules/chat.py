@@ -144,12 +144,12 @@ def run_chat_revision(user_msg: str, template_path: str) -> dict:
 
 
 def render_chat_preview(history: list) -> str:
-    """把聊天历史渲染为 HTML 气泡列表（DeepSeek Harness 风格）"""
+    """把聊天历史渲染为 HTML 气泡列表（shadcn 风格：方块头像 + 轻气泡）"""
     import html as _h
     parts = []
     for role, text in history:
         cls = "chat-user" if role == "user" else "chat-ai"
-        icon = "🧑" if role == "user" else "🤖"
+        icon = "你" if role == "user" else "AI"
         safe = _h.escape(str(text))
         parts.append(f"<div class='{cls}'><span class='chat-ico'>{icon}</span>"
                      f"<div class='chat-bubble'>{safe}</div></div>")

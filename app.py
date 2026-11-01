@@ -1031,6 +1031,30 @@ input[type="checkbox"]:focus-visible {
     28px 28px 0 0 var(--app-muted),
     0 42px 0 0 var(--app-muted);
 }
+
+/* 生成中的加载态：预览区骨架轻微呼吸，表示「正在干活」 */
+#resultCard:has([data-testid="status-tracker"]:not(.hidden)) .pix-statusbar::before,
+.preview-panel.loading .pix-statusbar::before {
+  animation: sk-pulse 1.6s ease-in-out infinite;
+}
+@keyframes sk-pulse {
+  0%, 100% { opacity: .45; }
+  50%      { opacity: 1; }
+}
+/* gradio 自带的进度条：压细、去重色，融进主题 */
+.gradio-container .progress-text,
+.gradio-container .eta-bar { font-family: var(--app-font) !important; }
+.gradio-container .progress-bar,
+.gradio-container .progress-level-inner {
+  background: var(--app-muted) !important;
+  color: var(--app-fg) !important;
+  border-radius: 6px !important;
+}
+.gradio-container .progress-bar .progress-level,
+.gradio-container div.progress-bar > div {
+  background: var(--app-fg) !important;
+  border-radius: 6px !important;
+}
 .preview-panel:has(.r-wrap) { display: block; padding: 12px !important; }
 
 /* ─────────── 文档预览（纸张）─────────── */
@@ -1062,31 +1086,42 @@ input[type="checkbox"]:focus-visible {
 /* ─────────── 对话流 ─────────── */
 .chat-shell { margin-top: 18px !important; }
 .chat-empty {
-  font-size: 13px; color: var(--app-fg-muted); text-align: center;
-  padding: 26px 16px; border: 1px dashed var(--app-border);
+  font-size: 12.5px; color: var(--app-fg-muted); text-align: center;
+  padding: 22px 16px; border: 1px dashed var(--app-border);
   border-radius: var(--app-radius); background: var(--app-bg-subtle);
 }
 .chat-user, .chat-ai {
-  display: flex; gap: 10px; align-items: flex-start; margin: 10px 0;
+  display: flex; gap: 9px; align-items: flex-start; margin: 12px 0;
 }
 .chat-user { flex-direction: row-reverse; }
 .chat-ico {
-  flex: 0 0 auto; width: 26px; height: 26px;
+  flex: 0 0 auto; width: 20px; height: 20px; margin-top: 3px;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 999px; font-size: 13px;
-  background: var(--app-muted); color: var(--app-fg);
-  border: 1px solid var(--app-border);
+  border-radius: 6px; font-size: 9px; font-weight: 650;
+  letter-spacing: .02em;
+  background: var(--app-muted); color: var(--app-fg-muted);
+  border: none;
+}
+.chat-user .chat-ico {
+  background: var(--app-fg); color: var(--app-bg);
 }
 .chat-bubble {
-  max-width: 76%; padding: 9px 13px; font-size: 13.5px; line-height: 1.6;
-  border-radius: var(--app-radius); border: 1px solid var(--app-border);
-  background: var(--app-card); color: var(--app-fg);
-  box-shadow: var(--app-shadow-xs);
+  max-width: 78%; padding: 8px 12px; font-size: 13px; line-height: 1.62;
+  border-radius: 10px; border: 1px solid transparent;
+  background: var(--app-bg-subtle); color: var(--app-fg);
+  box-shadow: none;
   white-space: pre-wrap; word-break: break-word;
 }
+/* 用户：muted 底 + 右上角收口，不用纯黑满块 */
 .chat-user .chat-bubble {
-  background: var(--app-primary); color: var(--app-primary-fg);
-  border-color: var(--app-primary);
+  background: var(--app-muted); color: var(--app-fg);
+  border-color: transparent;
+  border-top-right-radius: 3px;
+}
+/* AI：透明底，更像「正文」而不是气泡 */
+.chat-ai .chat-bubble {
+  background: transparent; border-color: transparent; padding-left: 0;
+  border-top-left-radius: 3px;
 }
 
 /* ─────────── 历史记录 ─────────── */
@@ -1099,30 +1134,6 @@ input[type="checkbox"]:focus-visible {
 .hist-card:hover { border-color: var(--app-border-strong); box-shadow: var(--app-shadow-sm); }
 .hist-card .h-title { font-size: 13.5px; font-weight: 600; color: var(--app-fg); }
 .hist-card .h-meta { font-size: 12px; color: var(--app-fg-muted); margin: 2px 0 8px; }
-/* 下载按钮：卡片化 secondary（白底/卡片色 + 细边 + 深色文字），
-   覆盖 gradio 给 .prose a 注入的 accent 蓝字，去掉"黑色块+蓝字"的贴图感 */
-.hist-card a,
-.hist-card a:visited,
-.hist-card a:active,
-.prose .hist-card a {
-  display: inline-flex !important; align-items: center !important; gap: 5px !important;
-  font-size: 12.5px !important; font-weight: 550 !important;
-  color: var(--app-fg) !important;
-  background: var(--app-muted) !important;
-  border: 1px solid var(--app-border) !important;
-  border-radius: 8px !important;
-  padding: 6px 11px !important;
-  text-decoration: none !important;
-  box-shadow: none !important;
-  transition: background-color .15s ease, border-color .15s ease !important;
-}
-.hist-card a:hover,
-.prose .hist-card a:hover {
-  background: var(--app-muted-hover) !important;
-  border-color: var(--app-border-strong) !important;
-  color: var(--app-fg) !important;
-  text-decoration: none !important;
-}
 
 /* ─────────── 折叠面板（卡片化）─────────── */
 /* gradio 的折叠面板用「▼ + 内联 rotate」拼箭头，折叠时被转成 ◀（看着像返回键）。
@@ -1167,7 +1178,43 @@ details[open] > summary, .label-wrap.open {
 }
 details > *:not(summary) { margin-top: 0 !important; }
 .gradio-container .html-container { min-height: 0 !important; padding: 0 !important; }
-.accordion > div, [data-testid="accordion-content"] { padding: 14px 16px !important; }
+
+/* 展开后的内容区：更像「设置面板」，不是一堆散块 */
+.accordion > div, [data-testid="accordion-content"],
+.gr-accordion > div:not(:has(> .label-wrap)) {
+  padding: 14px 16px 16px !important;
+  background: var(--app-bg-subtle) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+/* 折叠区内部的表单块去掉自带边框，避免「卡中卡」 */
+[data-testid="accordion-content"] .block,
+[data-testid="accordion-content"] .form {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+[data-testid="accordion-content"] label,
+[data-testid="accordion-content"] .block-label {
+  font-size: 12px !important;
+  font-weight: 550 !important;
+  color: var(--app-fg-muted) !important;
+  margin-bottom: 4px !important;
+}
+/* 折叠区里的说明文字紧一点 */
+[data-testid="accordion-content"] .prose,
+[data-testid="accordion-content"] .prose p {
+  font-size: 12.5px !important;
+  line-height: 1.7 !important;
+  margin: 0 !important;
+  color: var(--app-fg-muted) !important;
+}
+[data-testid="accordion-content"] .prose p + p { margin-top: 10px !important; }
+[data-testid="accordion-content"] .prose ul,
+[data-testid="accordion-content"] .prose ol { margin: 6px 0 !important; }
+[data-testid="accordion-content"] .prose h3 { font-size: 13px !important; margin: 14px 0 6px !important; }
 
 /* ─────────── 下拉 ─────────── */
 .gradio-dropdown, .wrap, .wrap-inner {
@@ -1436,28 +1483,67 @@ html[data-ui-theme="dark"] body #appShell #newReportBtn:hover {
   text-underline-offset: 2px;
 }
 .hist-card .h-meta {
-  font-size: 10.5px !important;
+  font-size: 10px !important;
   margin: 2px 0 5px !important;
   color: var(--app-fg-muted) !important;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .hist-empty { font-size: 12px; color: var(--app-fg-muted); line-height: 1.6; padding: 4px 2px; }
 
 /* ─────────── 响应式 ─────────── */
+/* 中屏：侧栏收窄 */
+@media (max-width: 1200px) {
+  #sidebar {
+    flex: 0 0 208px !important; width: 208px !important;
+    min-width: 208px !important; max-width: 208px !important;
+  }
+  #main { padding: 0 24px 0 22px !important; }
+}
+
+/* 窄屏：侧栏仍保留（历史不能丢），但压缩；不如 900px 以下才折叠 */
 @media (max-width: 900px) {
-  #sidebar { display: none !important; }
-  #main { padding-left: 0 !important; }
+  #appShell { padding-left: 0 !important; flex-direction: column !important; }
+  #sidebar {
+    position: static !important;
+    display: block !important;
+    flex: 0 0 auto !important;
+    width: 100% !important; min-width: 0 !important; max-width: none !important;
+    height: auto !important;
+    padding: 14px 14px 0 !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--app-border) !important;
+    overflow: visible !important;
+  }
+  /* 历史卡改横向排，节省纵向空间 */
+  #sidebar .hist-card,
+  #sidebar .hist-empty { display: inline-block !important; vertical-align: top !important; }
+  #sidebar .hist-card { width: 190px !important; margin-right: 8px !important; }
+  #sidebar .side-foot { margin-top: 8px; }
+  #main { padding: 16px 14px 0 !important; }
+  .side-brand { padding-bottom: 4px; }
 }
+
 @media (max-width: 860px) {
-  .gradio-container { padding: 0 14px 48px !important; }
-  .app-header { padding: 16px 0 14px; }
+  .app-header { padding: 12px 0 12px; }
   .app-header .pill { display: none; }
-  .chat-bubble { max-width: 88%; }
+  .chat-bubble { max-width: 90%; }
+  .steps-bar { font-size: 12px; }
 }
+
 @media (max-width: 640px) {
   .app-header h1 { font-size: 15.5px; }
   .app-header .brand-text p { font-size: 11.5px; }
-  .steps-bar { font-size: 11.5px; padding: 9px 12px; gap: 5px 14px; }
+  .steps-bar {
+    font-size: 11.5px; padding: 9px 12px; gap: 5px 14px;
+    flex-direction: column; align-items: flex-start;
+  }
   .out-row { flex-direction: column; }
+  .chat-bubble { max-width: 94%; font-size: 12.5px; }
+  #themeBtn { top: 10px !important; right: 10px !important; }
+  .composer-tools { flex-direction: column !important; gap: 10px !important; }
+  .composer-tools > .column { width: 100% !important; min-width: 0 !important; }
+  #tplUpload .upload-container::after { font-size: 12px !important; }
+  #resultHead { flex-wrap: wrap !important; gap: 8px !important; }
 }
 
 """
@@ -1552,6 +1638,44 @@ html[data-ui-theme="dark"] body #appShell .hist-card a:active {
 html[data-ui-theme="dark"] body #appShell .hist-card a:hover {
   background: transparent !important;
   color: #fafafa !important;
+}
+/* 对话区：暗色下 AI 透明度气泡 / 用户 muted 气泡 */
+html[data-ui-theme="dark"] body #appShell .chat-bubble {
+  background: #171717 !important;
+  color: #fafafa !important;
+  border-color: transparent !important;
+}
+html[data-ui-theme="dark"] body #appShell .chat-ai .chat-bubble {
+  background: transparent !important;
+  color: #e5e5e5 !important;
+}
+html[data-ui-theme="dark"] body #appShell .chat-user .chat-bubble {
+  background: #262626 !important;
+  color: #fafafa !important;
+}
+html[data-ui-theme="dark"] body #appShell .chat-ico {
+  background: #262626 !important;
+  color: #a3a3a3 !important;
+}
+html[data-ui-theme="dark"] body #appShell .chat-user .chat-ico {
+  background: #fafafa !important;
+  color: #171717 !important;
+}
+html[data-ui-theme="dark"] body #appShell .chat-empty {
+  background: #111111 !important;
+  border-color: #262626 !important;
+  color: #a3a3a3 !important;
+}
+/* 折叠面板展开区 */
+html[data-ui-theme="dark"] body #appShell [data-testid="accordion-content"] {
+  background: #111111 !important;
+}
+html[data-ui-theme="dark"] body #appShell .preview-panel .pix-statusbar::before {
+  background: #262626 !important;
+  box-shadow:
+    0 14px 0 0 #262626,
+    28px 28px 0 0 #262626,
+    0 42px 0 0 #262626 !important;
 }
 """
 
