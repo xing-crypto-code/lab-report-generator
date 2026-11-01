@@ -732,13 +732,13 @@ textarea:focus, input:focus {
 #composerBox .input-wrapper { flex: 1 1 auto !important; min-width: 0 !important; }
 #composerBox textarea {
   width: 100% !important;
-  min-height: 54px !important;
+  min-height: 40px !important;
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
-  padding: 8px 8px !important;
+  padding: 6px 8px !important;
   font-size: 14px !important;
-  line-height: 1.65 !important;
+  line-height: 1.6 !important;
   color: var(--app-fg) !important;
 }
 #composerBox textarea:focus { box-shadow: none !important; }
@@ -816,6 +816,7 @@ textarea:focus, input:focus {
   background-image: none !important;
   box-shadow: none !important;
   min-height: 46px !important;
+  height: auto !important;
   display: flex !important; align-items: center !important; justify-content: center !important;
   cursor: pointer !important;
   color: #737373 !important;
@@ -833,10 +834,36 @@ textarea:focus, input:focus {
 }
 #tplUpload .upload-container > div,
 #tplUpload [data-testid="upload-text"] {
+  background: transparent !important;
   color: #737373 !important;
   font-family: var(--app-font) !important;
   font-size: 13px !important;
   font-weight: 400 !important;
+  border-radius: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: 0 !important;
+  margin: 0 6px !important;
+  overflow: visible !important;
+  line-height: 1.4 !important;
+}
+/* gradio 的 File 在多行模式下会塞一个隐藏 input 撑高，这里压掉 */
+#tplUpload input[type="file"] {
+  display: none !important;
+}
+ /* 投放区提示：gradio 内部是「裸文本 + .or + 图标」混排，很难只留下自己想要的那行。
+    干脆整块藏掉，在按钮上用 ::after 画一行干净提示；点击行为不受影响（点的是按钮）。 */
+#tplUpload [data-testid="upload-text"] { display: none !important; }
+#tplUpload .upload-container::after,
+#tplUpload [data-testid="file-upload"]::after {
+  content: "↑  上传或拖放老师模板";
+  font-family: var(--app-font) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  line-height: 1.4 !important;
+  color: #737373 !important;
+  white-space: nowrap;
 }
 #tplUpload .upload-container:hover > div,
 #tplUpload .upload-container:hover [data-testid="upload-text"] { color: #0a0a0a !important; }
@@ -1073,19 +1100,35 @@ input[type="checkbox"]:focus-visible {
 }
 
 /* ─────────── 折叠面板（卡片化）─────────── */
+/* gradio 的折叠面板用「▼ + 内联 rotate」拼箭头，折叠时被转成 ◀（看着像返回键）。
+   这里把字形藏掉，用两条边画成 chevron：折叠朝右 ›，展开朝下 ∨。 */
+.label-wrap .icon {
+  display: inline-flex !important;
+  width: 6px !important; height: 6px !important;
+  margin-right: 2px !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  border-right: 1.5px solid var(--app-fg-muted) !important;
+  border-bottom: 1.5px solid var(--app-fg-muted) !important;
+  transform: rotate(-45deg) !important;
+  transition: transform .18s ease, border-color .18s ease !important;
+}
+.label-wrap.open .icon { transform: rotate(45deg) !important; }
+.label-wrap:hover .icon { border-color: var(--app-fg) !important; }
+
 details, .accordion, [data-testid="accordion"], .gr-accordion {
   border: 1px solid var(--app-border) !important;
   border-radius: var(--app-radius) !important;
   background: var(--app-card) !important;
   box-shadow: none !important;
   overflow: hidden !important;
-  margin-top: 14px !important;
+  margin-top: 10px !important;
   padding: 0 !important;
 }
 details > summary, .label-wrap, [data-testid="accordion"] > button {
-  padding: 12px 16px !important;
+  padding: 11px 15px !important;
   font-family: var(--app-font) !important;
-  font-size: 13.5px !important;
+  font-size: 13px !important;
   font-weight: 550 !important;
   color: var(--app-fg) !important;
   background: var(--app-card) !important;
@@ -1182,10 +1225,27 @@ hr { border: none !important; border-top: 1px solid var(--app-border) !important
 }
 
 /* ─────────── 应用外壳：侧栏 + 主区 ─────────── */
+/* style 注入宿主：只负责挂 <style>，绝不能占布局 */
+.dsh-style-host,
+.dsh-style-host .html-container,
+.dsh-hidden-style { display: none !important; }
+
+/* gradio 默认把整页限制在 1240px 并居中；改成占满视口，
+   否则大屏上左右各留一大块空白、内容还偏左。 */
+.gradio-container {
+  max-width: none !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.gradio-container .main.fillable { padding: 0 !important; max-width: none !important; }
 #appShell {
   align-items: flex-start !important;
   gap: 0 !important;
   flex-wrap: nowrap !important;
+  width: 100% !important;
+  padding-left: 20px !important;
+  box-sizing: border-box !important;
 }
 #sidebar {
   position: sticky;
@@ -1206,7 +1266,7 @@ hr { border: none !important; border-top: 1px solid var(--app-border) !important
 #main {
   flex: 1 1 auto !important;
   min-width: 0 !important;
-  padding: 0 0 0 28px !important;
+  padding: 0 32px 0 28px !important;
 }
 
 .side-brand { display: flex; align-items: center; gap: 10px; padding: 2px 0 6px; }
@@ -1287,9 +1347,30 @@ hr { border: none !important; border-top: 1px solid var(--app-border) !important
   line-height: 1.35 !important;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.hist-card .h-meta { font-size: 10.5px !important; margin: 3px 0 7px !important; }
-.hist-card a { font-size: 11.5px !important; padding: 4px 9px !important; border-radius: 6px !important; }
-.hist-card a, .prose .hist-card a { color: var(--app-fg) !important; }
+/* 下载链：做成轻量文字链，别抢过标题 */
+.hist-card a, .prose .hist-card a {
+  display: inline-flex !important; align-items: center; gap: 4px;
+  font-size: 11px !important;
+  padding: 1px 0 !important;
+  border: none !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  color: var(--app-fg-muted) !important;
+  text-decoration: none !important;
+}
+.hist-card a:hover, .prose .hist-card a:hover {
+  color: var(--app-fg) !important;
+  background: transparent !important;
+  text-decoration: underline !important;
+  text-underline-offset: 2px;
+}
+.hist-card .h-meta {
+  font-size: 10.5px !important;
+  margin: 2px 0 5px !important;
+  color: var(--app-fg-muted) !important;
+}
 .hist-empty { font-size: 12px; color: var(--app-fg-muted); line-height: 1.6; padding: 4px 2px; }
 
 /* ─────────── 响应式 ─────────── */
@@ -1339,6 +1420,7 @@ html[data-ui-theme="dark"] body #appShell #tplUpload [data-testid="file-upload"]
 }
 html[data-ui-theme="dark"] body #appShell #tplUpload .upload-container > div,
 html[data-ui-theme="dark"] body #appShell #tplUpload [data-testid="upload-text"] {
+  background: transparent !important;
   color: #a3a3a3 !important;
 }
 html[data-ui-theme="dark"] body #appShell #tplUpload svg,
@@ -1349,6 +1431,12 @@ html[data-ui-theme="dark"] body #appShell #tplUpload [class*="icon"] {
 html[data-ui-theme="dark"] body #appShell #tplUpload .upload-container:hover {
   background: #262626 !important;
   border-color: #737373 !important;
+}
+html[data-ui-theme="dark"] body #appShell #tplUpload .upload-container::after,
+html[data-ui-theme="dark"] body #appShell #tplUpload [data-testid="file-upload"]::after {
+  color: #a3a3a3 !important;
+}
+html[data-ui-theme="dark"] body #appShell #tplUpload .upload-container:hover::after {
   color: #fafafa !important;
 }
  /* 浮动标签（gradio 的 block-label.float）：亮色下是白底+虚线，暗色要改成深底 */
@@ -1388,13 +1476,12 @@ html[data-ui-theme="dark"] body #appShell .hist-card .h-meta { color: #a3a3a3 !i
 html[data-ui-theme="dark"] body #appShell .hist-card a,
 html[data-ui-theme="dark"] body #appShell .hist-card a:visited,
 html[data-ui-theme="dark"] body #appShell .hist-card a:active {
-  background: #262626 !important;
-  border-color: #404040 !important;
-  color: #fafafa !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  color: #a3a3a3 !important;
 }
 html[data-ui-theme="dark"] body #appShell .hist-card a:hover {
-  background: #303030 !important;
-  border-color: #525252 !important;
+  background: transparent !important;
   color: #fafafa !important;
 }
 """
@@ -1451,10 +1538,12 @@ def build_ui():
         # ── 主题切换按钮（固定在右上角）──
         theme_btn = gr.Button("☾", elem_id="themeBtn", variant="secondary")
 
-        with gr.Row(elem_id="appShell"):
+        # 原生暗色覆盖（详见 DARK_CSS 定义）：经 gr.HTML 注入，绕开 gradio 作用域前缀。
+        # 放在 appShell 之外，且 wrapper 不占布局，避免把侧栏/主区挤偏。
+        gr.HTML(f'<div class="dsh-hidden-style"><style>{DARK_CSS}</style></div>',
+                elem_classes="dsh-style-host")
 
-            # 原生暗色覆盖（详见 DARK_CSS 定义）：经 gr.HTML 注入，绕开 gradio 作用域前缀
-            gr.HTML(f'<style>{DARK_CSS}</style>')
+        with gr.Row(elem_id="appShell"):
 
             # ══════════════════════════════════════════
             #  侧栏：品牌 / 新建 / 历史 / 状态
@@ -1627,5 +1716,6 @@ if __name__ == "__main__":
         server_name="0.0.0.0", server_port=7860, share=False, show_error=True,
         theme=gr.themes.Base(primary_hue="neutral", neutral_hue="neutral"),
         css=CSS,
+        footer_links=[],
         allowed_paths=[str(UPLOAD_DIR), str(OUTPUT_DIR), str(BASE_DIR)],
     )

@@ -102,9 +102,9 @@ def render_history_html() -> str:
         url = _file_url(i["docx"])
         portions = [
             "<div class='hist-card'>",
-            f"<div class='h-title'>📄 {_htmlesc(i.get('title','未命名'))}</div>",
+            f"<div class='h-title'>{_htmlesc(i.get('title','未命名'))}</div>",
             f"<div class='h-meta'>{i.get('time','')} · {_htmlesc(i.get('model','') or '—')}</div>",
-            f"<a href='{url}' download>下载 .docx</a>",
+            f"<a class='h-dl' href='{url}' download>下载 .docx</a>",
             "</div>",
         ]
         cards.append("".join(portions))
