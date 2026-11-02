@@ -606,9 +606,9 @@ gradio-app {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 22px 2px 18px;
-  border-bottom: 1px solid var(--app-border);
-  margin-bottom: 22px;
+  padding: 26px 2px 16px;
+  border-bottom: none;
+  margin-bottom: 14px;
 }
 .app-header .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .app-header .brand-mark {
@@ -636,9 +636,9 @@ gradio-app {
 /* ─────────── 三步提示条 ─────────── */
 .steps-bar {
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px;
-  padding: 11px 14px; margin: 0 0 18px;
-  background: var(--app-bg-subtle); border: 1px solid var(--app-border);
-  border-radius: var(--app-radius); font-size: 12.5px; color: var(--app-fg-muted);
+  padding: 12px 2px 12px; margin: 0 0 18px;
+  background: transparent; border: none;
+  border-radius: 0; font-size: 12.5px; color: var(--app-fg-muted);
 }
 .steps-bar .step { display: inline-flex; align-items: center; gap: 7px; }
 .steps-bar .step b {
@@ -723,18 +723,18 @@ textarea:focus, input:focus {
 /* ─────────── Composer（主输入区）─────────── */
 #composerBox {
   border: 1px solid var(--app-border) !important;
-  border-radius: var(--app-radius-lg) !important;
+  border-radius: 22px !important;
   background: var(--app-card) !important;
   background-color: var(--app-card) !important;
   background-image: none !important;
-  box-shadow: var(--app-shadow-sm) !important;
-  padding: 6px 8px 8px !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 10px 30px -14px rgba(0,0,0,.10) !important;
+  padding: 9px 12px 9px 16px !important;
   transition: border-color .15s ease, box-shadow .15s ease !important;
 }
 .gradio-container #composerBox { background-color: var(--app-card) !important; }
 #composerBox:focus-within {
   border-color: var(--app-border-strong) !important;
-  box-shadow: 0 0 0 3px var(--app-ring), var(--app-shadow-sm) !important;
+  box-shadow: 0 0 0 3px var(--app-ring), 0 8px 24px -12px rgba(0,0,0,.10) !important;
 }
 #composerBox .form,
 #composerBox .full-container,
@@ -944,11 +944,11 @@ input[type="checkbox"]:focus-visible {
 /* ─────────── 结果卡 ─────────── */
 #resultCard {
   border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-lg);
+  border-radius: 16px;
   background: var(--app-card);
-  box-shadow: var(--app-shadow-sm);
+  box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 8px 28px -18px rgba(0,0,0,.10);
   overflow: hidden;
-  margin-top: 18px;
+  margin-top: 20px;
 }
 #resultHead {
   align-items: center !important;
@@ -1095,8 +1095,8 @@ input[type="checkbox"]:focus-visible {
 .chat-shell { margin-top: 18px !important; }
 .chat-empty {
   font-size: 12.5px; color: var(--app-fg-muted); text-align: center;
-  padding: 22px 16px; border: 1px dashed var(--app-border);
-  border-radius: var(--app-radius); background: var(--app-bg-subtle);
+  padding: 26px 16px; border: none;
+  border-radius: 0; background: transparent;
 }
 .chat-user, .chat-ai {
   display: flex; gap: 9px; align-items: flex-start; margin: 12px 0;
@@ -1161,28 +1161,34 @@ input[type="checkbox"]:focus-visible {
 .label-wrap:hover .icon { border-color: var(--app-fg) !important; }
 
 details, .accordion, [data-testid="accordion"], .gr-accordion {
-  border: 1px solid var(--app-border) !important;
-  border-radius: var(--app-radius) !important;
-  background: var(--app-card) !important;
+  border: none !important;
+  border-top: 1px solid var(--app-border) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
   box-shadow: none !important;
   overflow: hidden !important;
-  margin-top: 10px !important;
+  margin-top: 0 !important;
   padding: 0 !important;
 }
 details > summary, .label-wrap, [data-testid="accordion"] > button {
-  padding: 11px 15px !important;
+  padding: 14px 2px !important;
   font-family: var(--app-font) !important;
   font-size: 13px !important;
-  font-weight: 550 !important;
-  color: var(--app-fg) !important;
-  background: var(--app-card) !important;
+  font-weight: 500 !important;
+  color: var(--app-fg-muted) !important;
+  background: transparent !important;
   border: none !important;
   cursor: pointer;
-  transition: background-color .15s ease !important;
+  transition: color .15s ease !important;
+}
+details > summary:hover, .label-wrap:hover {
+  background: transparent !important;
+  color: var(--app-fg) !important;
 }
 details > summary:hover, .label-wrap:hover { background: var(--app-muted) !important; }
 details[open] > summary, .label-wrap.open {
-  border-bottom: 1px solid var(--app-border) !important;
+  border-bottom: none !important;
+  color: var(--app-fg) !important;
 }
 details > *:not(summary) { margin-top: 0 !important; }
 .gradio-container .html-container { min-height: 0 !important; padding: 0 !important; }
@@ -1361,6 +1367,14 @@ hr { border: none !important; border-top: 1px solid var(--app-border) !important
   flex: 1 1 auto !important;
   min-width: 0 !important;
   padding: 0 32px 0 28px !important;
+  align-items: center !important;
+}
+/* ChatGPT 式：正文居中、两侧留白，读起来不摊满整屏 */
+#main > * {
+  width: 100% !important;
+  max-width: 780px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 
 .side-brand { display: flex; align-items: center; gap: 10px; padding: 2px 0 6px; }
@@ -1381,20 +1395,31 @@ hr { border: none !important; border-top: 1px solid var(--app-border) !important
 
 #newReportBtn {
   width: 100% !important;
-  justify-content: center !important;
+  justify-content: flex-start !important;
   margin-top: 2px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--app-fg) !important;
+  font-weight: 550 !important;
+  padding: 8px 10px !important;
+  border-radius: 8px !important;
+}
+#newReportBtn:hover {
+  background: var(--app-muted) !important;
+  border: none !important;
 }
 
-/* 暗色下 primary 用低饱和浅色 + 深字，比纯白满面积柔和（shadcn 的做法） */
+/* 暗色下 primary 保持扁平，只靠 hover 显底 */
 html[data-ui-theme="dark"] body #appShell #newReportBtn {
-  background: #e5e5e5 !important;
-  border-color: #e5e5e5 !important;
-  color: #171717 !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  color: #fafafa !important;
 }
 html[data-ui-theme="dark"] body #appShell #newReportBtn:hover {
-  background: #d4d4d4 !important;
-  border-color: #d4d4d4 !important;
-  color: #171717 !important;
+  background: #262626 !important;
+  border-color: transparent !important;
+  color: #fafafa !important;
 }
 
 /* 侧栏里的折叠面板：去卡片化，做成小节标题 */
@@ -1416,14 +1441,33 @@ html[data-ui-theme="dark"] body #appShell #newReportBtn:hover {
   border: none !important;
 }
 .side-acc .label-wrap:hover { color: var(--app-fg) !important; background: transparent !important; }
-.side-acc > div, .side-acc [data-testid="accordion-content"] { padding: 6px 0 0 !important; }
+/* 侧栏折叠区必须透明：不能被主区折叠面板的灰底规则波及 */
+.side-acc > div,
+.side-acc [data-testid="accordion-content"],
+.side-acc .gr-accordion > div:not(:has(> .label-wrap)),
+#sidebar .side-acc > div,
+#sidebar .side-acc [data-testid="accordion-content"] {
+  padding: 4px 0 0 !important;
+  background: transparent !important;
+}
 #refreshBtn {
-  width: 100% !important;
-  margin-bottom: 8px !important;
-  font-size: 12px !important;
-  min-height: 30px !important;
-  padding: 4px 10px !important;
+  width: auto !important;
+  margin: 0 0 2px auto !important;
+  font-size: 10.5px !important;
+  min-height: 22px !important;
+  height: 22px !important;
+  padding: 0 6px !important;
   color: var(--app-fg-muted) !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  opacity: .65;
+  display: inline-flex !important;
+}
+#refreshBtn:hover {
+  background: transparent !important;
+  color: var(--app-fg) !important;
+  opacity: 1;
 }
 
 .side-foot {
@@ -1439,15 +1483,19 @@ html[data-ui-theme="dark"] body #appShell #newReportBtn:hover {
   background: var(--app-success); display: inline-block; flex: 0 0 auto;
 }
 
-/* 侧栏历史卡片（紧凑版） */
+/* 侧栏历史卡片（ChatGPT 式：无边框，靠 hover 底色区分） */
 .hist-card {
   position: relative !important;
-  border: 1px solid var(--app-border) !important;
+  border: none !important;
   border-radius: 8px !important;
-  padding: 8px 9px !important;
-  margin-bottom: 8px !important;
-  background: var(--app-card) !important;
+  padding: 7px 8px !important;
+  margin-bottom: 1px !important;
+  background: transparent !important;
   box-shadow: none !important;
+  transition: background-color .12s ease !important;
+}
+.hist-card:hover {
+  background: var(--app-muted) !important;
 }
 .hist-card .h-title {
   flex: 1 1 auto !important;
@@ -1642,10 +1690,13 @@ html[data-ui-theme="dark"] body #appShell #tplUpload .or,
 html[data-ui-theme="dark"] body #appShell #tplUpload [data-testid="upload-text"] {
   color: #a3a3a3 !important;
 }
-/* 历史卡 */
+/* 历史卡（暗色也扁平：透明底，hover 才显 #262626） */
 html[data-ui-theme="dark"] body #appShell .hist-card {
-  background: #171717 !important;
-  border-color: #262626 !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+html[data-ui-theme="dark"] body #appShell .hist-card:hover {
+  background: #262626 !important;
 }
 html[data-ui-theme="dark"] body #appShell .hist-card .h-title { color: #fafafa !important; }
 html[data-ui-theme="dark"] body #appShell .hist-card .h-meta { color: #a3a3a3 !important; }
@@ -1690,6 +1741,11 @@ html[data-ui-theme="dark"] body #appShell .chat-empty {
 /* 折叠面板展开区 */
 html[data-ui-theme="dark"] body #appShell [data-testid="accordion-content"] {
   background: #111111 !important;
+}
+/* 但侧栏（历史记录）必须透明，不能被上面的灰底波及 */
+html[data-ui-theme="dark"] body #appShell #sidebar .side-acc [data-testid="accordion-content"],
+html[data-ui-theme="dark"] body #appShell #sidebar .side-acc > div {
+  background: transparent !important;
 }
 html[data-ui-theme="dark"] body #appShell .preview-panel .pix-statusbar::before {
   background: #262626 !important;
