@@ -137,7 +137,10 @@ def detect_experiment_type(ocr_text: str) -> str:
         "化学实验": ["化学", "滴定", "溶液", "反应", "浓度", "沉淀", "pH", "mol", "mL", "试剂", "酸碱"],
         "力学实验": ["力学", "牛顿", "质量", "重力", "摩擦", "弹性", "转动", "力矩", "弹簧"],
         "光学实验": ["光学", "透镜", "折射", "反射", "偏振", "光栅", "激光", "衍射", "干涉"],
-        "计算机/编程实验": ["编程", "算法", "代码", "Python", "C++", "数据结构", "编译", "调试", "程序"],
+        "计算机/编程实验": ["编程", "算法", "代码", "Python", "C++", "数据结构",
+                          "编译", "调试", "程序", "C语言", "指针", "结构体",
+                          "数组", "函数调用", "链表", "文件读写", "malloc",
+                          "scanf", "printf", "stdio.h", "main()"],
     }
     for exp_type, kws in keywords.items():
         scores[exp_type] = sum(1 for kw in kws if kw in ocr_lower)
@@ -148,6 +151,12 @@ def detect_experiment_type(ocr_text: str) -> str:
                           "傅里叶", "冲激响应", "频谱", "电压增益"])
     if strong_circuit:
         scores["电路/电子实验"] = circ_score + 4
+    # C 语言强信号：出现代码/指针/结构体等，直接压过其他类型
+    strong_c = any(k in ocr_lower for k in
+                   ["c语言", "指针", "结构体", "scanf", "printf", "stdio.h",
+                    "malloc", "链表", "文件读写", "main()", "源程序", "流程图"])
+    if strong_c:
+        scores["计算机/编程实验"] = scores["计算机/编程实验"] + 5
     best = max(scores, key=scores.get)
     return best if scores[best] > 0 else "物理实验"
 

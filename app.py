@@ -402,11 +402,11 @@ def composer_submit(message, template_file, api_key, api_base, model, use_builti
             chat_mod._session.append(("ai", f"❌ 生成出错：{e}"))
             return chat_mod.render_chat_preview(chat_mod._session), _nochange, "❌ 出错", _nochange, _nochange
         if dl:
-            gr.Info(f"✅ 报告已生成！点「下载 .docx」保存")
-            chat_mod._session.append(("ai", "✅ 报告已生成，可在上方预览；点「下载 .docx」保存。\n"
-                                           "想改？在输入框继续提要求即可。"))
+            gr.Info("✅ 出货了！点「下载 .docx」拿走")
+            chat_mod._session.append(("ai", "✅ 稿子出来了，上面能预览，点「下载 .docx」拿走。\n"
+                                           "哪儿不对就在下面接着提，别客气。"))
         else:
-            gr.Warning(f"❌ 生成失败：{dl_status[:120]}")
+            gr.Warning(f"❌ 这一版没成：{dl_status[:120]}")
         return chat_mod.render_chat_preview(chat_mod._session), dl, dl_status, preview, log
 
     # ── B. 无文件且无文字 → 忽略 ──
@@ -868,7 +868,7 @@ textarea:focus, input:focus {
 #tplUpload [data-testid="upload-text"] { display: none !important; }
 #tplUpload .upload-container::after,
 #tplUpload [data-testid="file-upload"]::after {
-  content: "↑  上传或拖放老师模板";
+  content: "↑  有老师模板就扔这儿，没有也不耽误";
   font-family: var(--app-font) !important;
   font-size: 13px !important;
   font-weight: 400 !important;
@@ -1179,14 +1179,22 @@ details[open] > summary, .label-wrap.open {
 details > *:not(summary) { margin-top: 0 !important; }
 .gradio-container .html-container { min-height: 0 !important; padding: 0 !important; }
 
-/* 展开后的内容区：更像「设置面板」，不是一堆散块 */
-.accordion > div, [data-testid="accordion-content"],
-.gr-accordion > div:not(:has(> .label-wrap)) {
+/* 展开后的内容区：更像「设置面板」，不是一堆散块。
+   注意：gradio 是用内联 display:none 来折叠的，这里绝不能设 display
+   （否则折叠失效、点了收不起来）。间距改用子元素 margin。 */
+.accordion > div:not([data-testid="accordion-content"]),
+[data-testid="accordion-content"] {
   padding: 14px 16px 16px !important;
   background: var(--app-bg-subtle) !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 12px !important;
+}
+[data-testid="accordion-content"] > * + *,
+.gr-accordion > div:not(:has(> .label-wrap)) > * + * {
+  margin-top: 12px !important;
+}
+/* 兜底：gradio 折叠用内联 display:none，任何 [hidden] 都必须真的隐藏 */
+[data-testid="accordion-content"][style*="display: none"],
+.gr-accordion > div[style*="display: none"] {
+  display: none !important;
 }
 /* 折叠区内部的表单块去掉自带边框，避免「卡中卡」 */
 [data-testid="accordion-content"] .block,
@@ -1425,29 +1433,32 @@ html[data-ui-theme="dark"] body #appShell #newReportBtn:hover {
 
 /* 侧栏历史卡片（紧凑版） */
 .hist-card {
+  position: relative !important;
   border: 1px solid var(--app-border) !important;
   border-radius: 8px !important;
-  padding: 8px 10px !important;
+  padding: 8px 9px !important;
   margin-bottom: 8px !important;
   background: var(--app-card) !important;
   box-shadow: none !important;
 }
 .hist-card .h-title {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  padding-right: 14px !important;
   font-size: 12px !important; font-weight: 550 !important;
   line-height: 1.35 !important;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  min-width: 0;
 }
 .hist-card .hist-head {
   display: flex !important; align-items: flex-start; gap: 4px;
 }
 .hist-card .h-del {
   flex: 0 0 auto;
-  width: 17px !important; height: 17px !important;
-  min-width: 17px !important; min-height: 17px !important;
+  width: 15px !important; height: 15px !important;
+  min-width: 15px !important; min-height: 15px !important;
   padding: 0 !important;
   display: flex !important; align-items: center !important; justify-content: center !important;
-  font-size: 10px !important; line-height: 1 !important;
+  font-size: 9px !important; line-height: 1 !important;
   color: var(--app-fg-muted) !important;
   background: transparent !important;
   background-image: none !important;
@@ -1455,6 +1466,8 @@ html[data-ui-theme="dark"] body #appShell #newReportBtn:hover {
   border-radius: 4px !important;
   box-shadow: none !important;
   opacity: 0; cursor: pointer;
+  position: absolute !important;
+  top: 7px; right: 7px;
   transition: opacity .15s ease, color .15s ease, background-color .15s ease !important;
 }
 .hist-card:hover .h-del { opacity: .72; }
@@ -1790,7 +1803,7 @@ def build_ui():
                 gr.HTML("""
                 <div class="side-foot">
                   <span class="dot"></span>
-                  <span>本地运行 · 密钥自配</span>
+                  <span>跑在你自己电脑上 · 密钥你自己填</span>
                 </div>
                 """)
 
@@ -1802,7 +1815,7 @@ def build_ui():
                 <header class="app-header">
                   <div class="brand-text">
                     <h1>生成实验报告</h1>
-                    <p>上传指导书，AI 按你的模板成稿</p>
+                    <p>指导书丢进来，剩下的交给它——你只管去改代码</p>
                   </div>
                 </header>
                 """)
@@ -1810,9 +1823,9 @@ def build_ui():
                 # ── 三步引导 ──
                 gr.HTML("""
                 <div class="steps-bar">
-                    <span class="step"><b>1</b> 上传实验指导书（PDF / Word / 图片，可多选）</span>
-                    <span class="step"><b>2</b> 可选：传老师模板</span>
-                    <span class="step"><b>3</b> 回车生成 → 下载 .docx</span>
+                    <span class="step"><b>1</b> 指导书丢进来（PDF / Word / 图片，能多选）</span>
+                    <span class="step"><b>2</b> 老师模板有就传，没有拉倒</span>
+                    <span class="step"><b>3</b> 回车等出稿 → 点下载跑路</span>
                 </div>
                 """)
 
@@ -1843,7 +1856,7 @@ def build_ui():
                             elem_id="tplUpload",
                         )
                     with gr.Column(scale=1, min_width=130):
-                        use_builtin = gr.Checkbox(label="用内置模板", value=True, elem_id="useBuiltin")
+                        use_builtin = gr.Checkbox(label="用内置模板（不开白不开）", value=True, elem_id="useBuiltin")
 
                 # ── 结果卡：标题 + 下载 + 预览 ──
                 with gr.Column(elem_id="resultCard"):
@@ -1857,7 +1870,7 @@ def build_ui():
                             )
                     download_status = gr.Markdown("", elem_id="dlStatus")
                     preview_out = gr.HTML(
-                        '<div class="pix-statusbar">生成后在这里预览报告</div>',
+                        '<div class="pix-statusbar">这儿还空着呢——先把指导书甩进来</div>',
                         elem_classes="preview-panel",
                     )
 
@@ -1882,22 +1895,28 @@ def build_ui():
                 with gr.Accordion("处理日志", open=False):
                     log_out = gr.Textbox(label="日志", lines=10, max_lines=25, show_label=False)
 
-                # ── 说明（简洁两段，收进折叠区）──
+                # ── 说明（收进折叠区）──
                 with gr.Accordion("使用说明", open=False):
                     gr.Markdown("""
-**三步出稿**
+**就三步，别慌**
 
-1. 点输入框左侧回形针，上传**实验指导书**（PDF / Word / 图片，可多选）
-2. 想用老师的模板就上传到「老师模板」，不传则用内置成都大学线框
-3. 点发送，生成后可下载 `.docx`
+1. 点输入框左边那个回形针 📎，把**实验指导书**丢进去（PDF / Word / 图片都行，能多选）
+2. 有老师给的模板就塞到「老师模板」，没有就勾上「用内置模板」——咱自带成都大学那套线框
+3. 回车，等它干活。出来之后点「下载 .docx」
 
-**改稿**：生成后在同一个输入框继续打字，例如「真值表第三行重算」
-「实验小结写具体些」，每次生成新版本（`_改稿v1`、`_改稿v2`…）。
+**改稿比重新写省事**：生成完还用这个框接着打字，比如「真值表第三行重算一遍」
+「实验小结给我写具体点，别糊弄」，它每次出一版新的（`_改稿v1`、`_改稿v2`…）。
+不满意就接着怼，反正不额外花钱。
 
-**模型**：选 `deepseek-chat` 走官方；选带前缀的（`deepseek-ai/…`、`Qwen/…`）
-走硅基流动，需在「模型 / API」里填 SiliconFlow 的 Key。
+**模型怎么挑**：`deepseek-chat` 走官方，最省心；带前缀的（`deepseek-ai/…`、`Qwen/…`）
+走硅基流动，记得去「模型 / API」里填对应的 Key。
 
-**识别实验类型**：物理 / 化学 / 电路 / 力学 / 光学各自匹配标准章节结构。
+**当前支持范围**（先把这两类做到能直接交）
+- **电子技术基础实验**：模电、数电（放大电路、射随器、负反馈、组合/时序逻辑、
+  触发器、振荡电路、流水灯这些已经在库里吃得比较透）
+- **C 语言实验 / 课程设计**：结构体、指针、文件操作、算法题那套报告格式
+
+只做了这两类，别的先不碰——贪多容易翻车。等这两类稳到能直接交，再往外扩。
 """)
 
         # ── 发送（Box 内回车 / ➤ 按钮 都走同一入口）──

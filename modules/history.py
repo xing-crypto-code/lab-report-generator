@@ -79,8 +79,8 @@ def render_history_html() -> str:
     """
     items = [i for i in load_history() if i.get("docx") and _valid_path(i["docx"])]
     if not items:
-        return ("<div class='hist-empty'>还没有生成记录。<br>"
-                "生成成功后会自动保存，之后可随时回来下载，不再消耗 Token。</div>")
+        return ("<div class='hist-empty'>还没有记录，一片空白。<br>"
+                "生成成功一次就自动存档，之后随时回来下载，不用再烧 Token。</div>")
 
     try:
         import urllib.parse

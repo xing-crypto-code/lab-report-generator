@@ -154,5 +154,6 @@ def render_chat_preview(history: list) -> str:
         parts.append(f"<div class='{cls}'><span class='chat-ico'>{icon}</span>"
                      f"<div class='chat-bubble'>{safe}</div></div>")
     if not parts:
-        parts.append("<div class='chat-empty'>生成报告后，在这里输入修改要求（如：真值表重算、实验过程补充小结）</div>")
+        parts.append("<div class='chat-empty'>还没出稿呢，兄弟。"
+                     "生成完在这儿接着提要求——比如「真值表重算」「小结写细点」</div>")
     return "".join(parts)
