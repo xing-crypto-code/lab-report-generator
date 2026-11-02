@@ -220,10 +220,18 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
                     template_analysis = analyze_template(template_path)
                     t_summary = get_template_summary(template_analysis)
         else:
-            # 优先使用内置的成都大学模板（已优化、质量高）；不存在则回退到通用生成模板
-            builtin = Path(TEMPLATE_DIR) / "内置实验报告模板.docx"
+            # 按实验类型选内置模板：C 语言用 C 版线框，模电/数电等用模数电版
+            is_c = exp_type == "计算机/编程实验"
+            if is_c:
+                builtin = Path(TEMPLATE_DIR) / "内置实验报告模板_C.docx"
+                if not builtin.exists():
+                    builtin = Path(TEMPLATE_DIR) / "内置实验报告模板.docx"
+                label = "C 语言程序设计实验报告单"
+            else:
+                builtin = Path(TEMPLATE_DIR) / "内置实验报告模板.docx"
+                label = "成都大学标准线框模板（模数电）"
             if builtin.exists():
-                report("📋 使用内置系统模板（成都大学标准线框模板）…")
+                report(f"📋 使用内置系统模板（{label}）…")
                 template_path = str(builtin)
                 # 自动校验内置模板是否已固化最新修复；未固化则就地烘焙
                 try:
