@@ -548,6 +548,13 @@ html, body, .gradio-container {
   text-rendering: optimizeLegibility;
 }
 
+/* 背景层（ASCII 海洋）要透出来：容器本身必须是透明的，
+   底色交给 body —— 这样 canvas 夹在 body 底色与内容之间。 */
+body > .gradio-container,
+.gradio-container {
+  background-color: transparent !important;
+}
+
 /* ─────────── 终端风：暗色下的网格线与等宽字体（参考 ascii-sharks）── */
 /* 可见的 ASCII 网格：12×18px 细线格子，铺满整个应用背景 */
 html[data-ui-theme="dark"] body {
@@ -558,7 +565,7 @@ html[data-ui-theme="dark"] body .gradio-container {
   background-image:
     linear-gradient(to right, rgba(255,255,255,.055) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255,255,255,.055) 1px, transparent 1px) !important;
-  background-size: 13px 19px !important;
+  background-size: 10px 15px !important;
   background-position: 0 0 !important;
 }
 html[data-ui-theme="dark"] body .main.fillable,
@@ -574,12 +581,24 @@ html[data-ui-theme="dark"] body #appShell #sidebar {
 html[data-ui-theme="dark"] body #appShell #composerBox,
 html[data-ui-theme="dark"] body #appShell #resultCard,
 html[data-ui-theme="dark"] body #appShell .chat-empty {
-  background: rgba(6,6,9,.84) !important;
+  background: rgba(8,8,11,.74) !important;
   border-color: rgba(255,255,255,.10) !important;
 }
 /* ASCII 海洋背景层：垫在内容之下 */
-#asciiOcean { z-index: 0; }
+#asciiOcean { z-index: 0 !important; }
 html[data-ui-theme="dark"] body .gradio-container { position: relative; z-index: 1; }
+
+/* 亮色下也让鲨鱼透出来：主要面板改成半透明白 */
+html:not([data-ui-theme="dark"]) body .gradio-container { position: relative; z-index: 1; }
+html:not([data-ui-theme="dark"]) body #appShell #composerBox,
+html:not([data-ui-theme="dark"]) body #appShell #resultCard,
+html:not([data-ui-theme="dark"]) body #appShell .chat-empty,
+html:not([data-ui-theme="dark"]) body #appShell #tplUpload {
+  background: rgba(255,255,255,.72) !important;
+}
+html:not([data-ui-theme="dark"]) body #appShell .hist-card:hover {
+  background: rgba(0,0,0,.045) !important;
+}
 /* 预览区骨架条改青色微光 */
 html[data-ui-theme="dark"] body #appShell .preview-panel .pix-statusbar::before {
   background: rgba(110,230,255,.18) !important;
