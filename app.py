@@ -35,6 +35,7 @@ from modules.pdf_template import convert_pdf_to_docx
 from modules.render import render_docx
 from modules import history as history_mod
 from modules import chat as chat_mod
+from modules.ocean import OCEAN_JS
 
 # ─── 模型列表（延迟计算，避免导入时序问题） ───
 
@@ -398,9 +399,16 @@ def composer_submit(message, template_file, api_key, api_base, model, use_builti
             "、".join(Path(p).name for p in files),
         ))
         try:
+            _step = [0]
+            _total_steps = 6          # 解析→识别→检索→生成→排版→落盘
             def _on_p(msg):
-                # 实时进度：去掉前缀 emoji 更清爽，只留说明文本
-                progress(msg.replace("\n", " "))
+                # ASCII 进度条：[████████·······] 52%  状态文本
+                _step[0] = min(_total_steps, _step[0] + 1)
+                frac = _step[0] / _total_steps
+                filled = int(round(frac * 16))
+                bar = "█" * filled + "░" * (16 - filled)
+                pct = int(round(frac * 100))
+                progress(f"[{bar}] {pct:3d}%  " + msg.replace("\n", " "))
             dl, dl_status, preview, log = process_files(
                 files, template_file, api_key, api_base, model, use_builtin,
                 requirement=text,
@@ -546,7 +554,7 @@ html[data-ui-theme="dark"] body {
   background-color: #000 !important;
 }
 html[data-ui-theme="dark"] body .gradio-container {
-  background-color: #000 !important;
+  background-color: transparent !important;
   background-image:
     linear-gradient(to right, rgba(255,255,255,.055) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255,255,255,.055) 1px, transparent 1px) !important;
@@ -558,17 +566,20 @@ html[data-ui-theme="dark"] body .wrap,
 html[data-ui-theme="dark"] body .main {
   background: transparent !important;
 }
-/* 面板用半透明黑，让底下的网格透出来 */
+/* 面板用半透明黑，让底下的网格与鲨鱼透出来 */
 html[data-ui-theme="dark"] body #appShell #sidebar {
-  background: rgba(0,0,0,.45) !important;
+  background: rgba(0,0,0,.62) !important;
   border-right: 1px solid rgba(255,255,255,.08) !important;
 }
 html[data-ui-theme="dark"] body #appShell #composerBox,
 html[data-ui-theme="dark"] body #appShell #resultCard,
 html[data-ui-theme="dark"] body #appShell .chat-empty {
-  background: rgba(10,10,14,.72) !important;
+  background: rgba(6,6,9,.84) !important;
   border-color: rgba(255,255,255,.10) !important;
 }
+/* ASCII 海洋背景层：垫在内容之下 */
+#asciiOcean { z-index: 0; }
+html[data-ui-theme="dark"] body .gradio-container { position: relative; z-index: 1; }
 /* 预览区骨架条改青色微光 */
 html[data-ui-theme="dark"] body #appShell .preview-panel .pix-statusbar::before {
   background: rgba(110,230,255,.18) !important;
@@ -705,6 +716,20 @@ gradio-app {
   border: 1px solid var(--app-border-strong);
   border-radius: 999px; font-size: 10.5px; font-weight: 600;
 }
+/* 暗色：序号变 ASCII 方括号 [1][2][3] */
+html[data-ui-theme="dark"] body #appShell .steps-bar .step b {
+  width: auto !important; min-width: 18px !important; height: auto !important;
+  padding: 0 2px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  font-family: var(--app-mono) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: rgba(110,230,255,.8) !important;
+}
+html[data-ui-theme="dark"] body #appShell .steps-bar .step b::before { content: "["; }
+html[data-ui-theme="dark"] body #appShell .steps-bar .step b::after { content: "]"; }
 
 /* ─────────── 按钮 ─────────── */
 button, .gradio-button, [type=button] {
@@ -933,7 +958,7 @@ textarea:focus, input:focus {
 #tplUpload [data-testid="upload-text"] { display: none !important; }
 #tplUpload .upload-container::after,
 #tplUpload [data-testid="file-upload"]::after {
-  content: "↑  有老师模板就扔这儿，没有也不耽误";
+  content: "> 有老师模板就扔这儿，没有也不耽误";
   font-family: var(--app-font) !important;
   font-size: 13px !important;
   font-weight: 400 !important;
@@ -1106,9 +1131,17 @@ input[type="checkbox"]:focus-visible {
   0%, 100% { opacity: .45; }
   50%      { opacity: 1; }
 }
-/* gradio 自带的进度条：压细、去重色，融进主题 */
+/* gradio 自带的进度条：暗色下换成终端观感 */
 .gradio-container .progress-text,
 .gradio-container .eta-bar { font-family: var(--app-font) !important; }
+html[data-ui-theme="dark"] body .gradio-container .progress-text,
+html[data-ui-theme="dark"] body .gradio-container .progress-level-inner,
+html[data-ui-theme="dark"] body .gradio-container .eta-bar {
+  font-family: var(--app-mono) !important;
+  font-size: 12px !important;
+  color: var(--app-accent) !important;
+  letter-spacing: 0;
+}
 .gradio-container .progress-bar,
 .gradio-container .progress-level-inner {
   background: var(--app-muted) !important;
@@ -1119,6 +1152,11 @@ input[type="checkbox"]:focus-visible {
 .gradio-container div.progress-bar > div {
   background: var(--app-fg) !important;
   border-radius: 6px !important;
+}
+html[data-ui-theme="dark"] body .gradio-container .progress-bar .progress-level,
+html[data-ui-theme="dark"] body .gradio-container div.progress-bar > div {
+  background: var(--app-accent) !important;
+  box-shadow: 0 0 10px rgba(110,230,255,.45) !important;
 }
 .preview-panel:has(.r-wrap) { display: block; padding: 12px !important; }
 
@@ -1200,26 +1238,39 @@ input[type="checkbox"]:focus-visible {
 .hist-card .h-title { font-size: 13.5px; font-weight: 600; color: var(--app-fg); }
 .hist-card .h-meta { font-size: 12px; color: var(--app-fg-muted); margin: 2px 0 8px; }
 
-/* ─────────── 折叠面板（卡片化）─────────── */
-/* gradio 的折叠面板用「▼ + 内联 rotate」拼箭头，折叠时被转成 ◀（看着像返回键）。
-   这里把字形藏掉，用两条边画成 chevron：折叠朝右 ›，展开朝下 ∨。 */
+/* ─────────── 折叠面板 ─────────── */
+/* gradio 用「▼ + 内联 rotate」拼箭头，折叠时转成 ◀（像个返回键）。
+   这里直接把字形换成 ASCII：[+] 折叠 / [-] 展开，配等宽字体是终端味。 */
 .label-wrap .icon {
   display: inline-flex !important;
-  width: 6px !important; height: 6px !important;
-  margin-right: 2px !important;
-  font-size: 0 !important;
-  line-height: 0 !important;
-  border-right: 1.5px solid var(--app-fg-muted) !important;
-  border-bottom: 1.5px solid var(--app-fg-muted) !important;
-  transform: rotate(-45deg) !important;
-  transition: transform .18s ease, border-color .18s ease !important;
+  align-items: center !important; justify-content: center !important;
+  width: 14px !important; height: 14px !important;
+  margin-right: 3px !important;
+  font-size: 11px !important;
+  line-height: 1 !important;
+  font-family: var(--app-mono) !important;
+  color: var(--app-fg-muted) !important;
+  border: none !important;
+  transform: none !important;
+  overflow: hidden !important;
+  transition: color .15s ease !important;
 }
-.label-wrap.open .icon { transform: rotate(45deg) !important; }
-.label-wrap:hover .icon { border-color: var(--app-fg) !important; }
+/* gradio 原本塞了一个 ▼ 字形，这里用 0 号字压掉，只留我们的 [±] */
+.label-wrap .icon { font-size: 0 !important; }
+.label-wrap .icon::after { content: "[+]"; font-size: 11px !important; }
+.label-wrap.open .icon::after { content: "[-]"; font-size: 11px !important; }
+.label-wrap:hover .icon { color: var(--app-fg) !important; }
+/* 暗色下 [ ] 里的符号发青光 */
+html[data-ui-theme="dark"] body #appShell .label-wrap .icon::after {
+  color: rgba(110,230,255,.75) !important;
+}
+html[data-ui-theme="dark"] body #appShell .label-wrap:hover .icon::after {
+  color: var(--app-accent) !important;
+}
 
 details, .accordion, [data-testid="accordion"], .gr-accordion {
   border: none !important;
-  border-top: 1px solid var(--app-border) !important;
+  border-top: 1px dashed var(--app-border) !important;
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
@@ -2092,6 +2143,8 @@ def build_ui():
         theme_btn.click(fn=None, inputs=[], outputs=[], js=TOGGLE_JS)
         demo.load(fn=None, inputs=[], outputs=[], js=RESTORE_JS)
         demo.load(fn=None, inputs=[], outputs=[], js=HIST_DEL_JS)
+        # ASCII 海洋背景（仅暗色可见，遵守 prefers-reduced-motion）
+        demo.load(fn=None, inputs=[], outputs=[], js=OCEAN_JS)
 
     return demo
 
