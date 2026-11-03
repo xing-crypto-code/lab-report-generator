@@ -508,25 +508,26 @@ CSS = r"""
 }
 
 :root[data-ui-theme="dark"] {
-  --app-bg:            #0a0a0a;
-  --app-bg-subtle:     #111111;
-  --app-fg:            #fafafa;
-  --app-fg-muted:      #a3a3a3;
-  --app-card:          #171717;
-  --app-muted:         #262626;
-  --app-muted-hover:   #303030;
-  --app-border:        #262626;
-  --app-border-strong: #404040;
-  --app-primary:       #fafafa;
-  --app-primary-fg:    #171717;
-  --app-primary-hover: #e5e5e5;
-  --app-accent:        #60a5fa;
-  --app-danger:        #f87171;
-  --app-success:       #4ade80;
-  --app-ring:          rgba(250,250,250,.22);
-  --app-shadow-xs:     0 1px 2px rgba(0,0,0,.5);
-  --app-shadow-sm:     0 1px 2px rgba(0,0,0,.6);
-  --app-shadow-md:     0 4px 12px rgba(0,0,0,.6);
+  /* 终端 ASCII 风（参考 ascii-sharks）：纯黑底 + 冷蓝灰 + 青色微光 */
+  --app-bg:            #000000;
+  --app-bg-subtle:     #0a0a0c;
+  --app-fg:            #d6dae4;
+  --app-fg-muted:      #6c7280;
+  --app-card:          #0b0b0e;
+  --app-muted:         #16161a;
+  --app-muted-hover:   #1e1e24;
+  --app-border:        #1a1a20;
+  --app-border-strong: #2a2a33;
+  --app-primary:       #d6dae4;
+  --app-primary-fg:    #000000;
+  --app-primary-hover: #ffffff;
+  --app-accent:        #6ee6ff;   /* 青色微光：ascii-sharks 的 wake 色 */
+  --app-danger:        #e0322c;
+  --app-success:       #34cd3c;
+  --app-ring:          rgba(110,230,255,.22);
+  --app-shadow-xs:     0 0 0 1px rgba(110,230,255,.05);
+  --app-shadow-sm:     0 0 0 1px rgba(110,230,255,.07);
+  --app-shadow-md:     0 0 0 1px rgba(110,230,255,.10);
 }
 
 /* ─────────── 基础 ─────────── */
@@ -537,6 +538,62 @@ html, body, .gradio-container {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+/* ─────────── 终端风：暗色下的网格线与等宽字体（参考 ascii-sharks）── */
+/* 可见的 ASCII 网格：12×18px 细线格子，铺满整个应用背景 */
+html[data-ui-theme="dark"] body {
+  background-color: #000 !important;
+}
+html[data-ui-theme="dark"] body .gradio-container {
+  background-color: #000 !important;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,.055) 1px, transparent 1px) !important;
+  background-size: 13px 19px !important;
+  background-position: 0 0 !important;
+}
+html[data-ui-theme="dark"] body .main.fillable,
+html[data-ui-theme="dark"] body .wrap,
+html[data-ui-theme="dark"] body .main {
+  background: transparent !important;
+}
+/* 面板用半透明黑，让底下的网格透出来 */
+html[data-ui-theme="dark"] body #appShell #sidebar {
+  background: rgba(0,0,0,.45) !important;
+  border-right: 1px solid rgba(255,255,255,.08) !important;
+}
+html[data-ui-theme="dark"] body #appShell #composerBox,
+html[data-ui-theme="dark"] body #appShell #resultCard,
+html[data-ui-theme="dark"] body #appShell .chat-empty {
+  background: rgba(10,10,14,.72) !important;
+  border-color: rgba(255,255,255,.10) !important;
+}
+/* 预览区骨架条改青色微光 */
+html[data-ui-theme="dark"] body #appShell .preview-panel .pix-statusbar::before {
+  background: rgba(110,230,255,.18) !important;
+  box-shadow:
+    0 14px 0 0 rgba(110,230,255,.18),
+    28px 28px 0 0 rgba(110,230,255,.12),
+    0 42px 0 0 rgba(110,230,255,.08) !important;
+}
+/* 暗色下青色微光给人/AI 头像与折叠箭头一点提示色 */
+html[data-ui-theme="dark"] body #appShell .label-wrap .icon {
+  border-color: rgba(110,230,255,.45) !important;
+}
+html[data-ui-theme="dark"] body #appShell .label-wrap:hover .icon {
+  border-color: var(--app-accent) !important;
+}
+/* 暗色下正文、按钮、标题全部走等宽，贴终端气质 */
+html[data-ui-theme="dark"] body .gradio-container,
+html[data-ui-theme="dark"] body button,
+html[data-ui-theme="dark"] body input,
+html[data-ui-theme="dark"] body textarea,
+html[data-ui-theme="dark"] body .prose,
+html[data-ui-theme="dark"] body h1,
+html[data-ui-theme="dark"] body h2,
+html[data-ui-theme="dark"] body h3 {
+  font-family: var(--app-mono) !important;
 }
 
 /* gradio 会按系统深色模式给 body 加 .dark，并在 gradio-app 上刷深色底；
@@ -1384,6 +1441,22 @@ hr { border: none !important; border-top: 1px solid var(--app-border) !important
   background: var(--app-primary); color: var(--app-primary-fg);
   border-radius: 8px; font-size: 13px; font-weight: 700;
 }
+/* 暗色：品牌标记换成 ASCII 密度字符，方块变字符格 */
+html[data-ui-theme="dark"] body #appShell .side-brand .brand-mark {
+  background: transparent !important;
+  color: var(--app-accent) !important;
+  border: 1px solid rgba(110,230,255,.35) !important;
+  border-radius: 2px !important;
+  font-family: var(--app-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0;
+  text-shadow: 0 0 8px rgba(110,230,255,.5);
+}
+html[data-ui-theme="dark"] body #appShell .side-brand h1 {
+  font-family: var(--app-mono) !important;
+  letter-spacing: .02em !important;
+  font-size: 13.5px !important;
+}
 .side-brand h1 {
   font-size: 14px; font-weight: 650; margin: 0; line-height: 1.2;
   color: var(--app-fg); letter-spacing: -.01em;
@@ -1848,10 +1921,10 @@ def build_ui():
             with gr.Column(scale=0, min_width=248, elem_id="sidebar"):
                 gr.HTML("""
                 <div class="side-brand">
-                  <div class="brand-mark">◆</div>
+                  <div class="brand-mark">▚</div>
                   <div class="brand-text">
                     <h1>实验报告工坊</h1>
-                    <p>LAB REPORT CRAFT</p>
+                    <p>-- LAB REPORT CRAFT --</p>
                   </div>
                 </div>
                 """)
