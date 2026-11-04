@@ -588,6 +588,47 @@ html[data-ui-theme="dark"] body #appShell .chat-empty {
 #asciiOcean { z-index: 0 !important; }
 html[data-ui-theme="dark"] body .gradio-container { position: relative; z-index: 1; }
 
+/* ─────────── 交互反馈（按键手感）─────────── */
+/* 暗色：hover 泛起青色微光，按下时辉光收紧变实，呼应终端主题 */
+html[data-ui-theme="dark"] body button:not(:disabled):hover,
+html[data-ui-theme="dark"] body .gradio-button:not(:disabled):hover {
+  box-shadow: 0 0 0 1px rgba(110,230,255,.26),
+              0 0 14px -6px rgba(110,230,255,.45) !important;
+}
+html[data-ui-theme="dark"] body button:not(:disabled):active,
+html[data-ui-theme="dark"] body .gradio-button:not(:disabled):active {
+  box-shadow: inset 0 0 0 1px rgba(110,230,255,.5),
+              inset 0 0 14px -6px rgba(110,230,255,.4) !important;
+}
+/* 暗色主按钮（发送/新建）按下时整块发青光 */
+html[data-ui-theme="dark"] body #composerBox button.submit-button:active:not(:disabled) {
+  box-shadow: inset 0 0 0 1px rgba(110,230,255,.6),
+              0 0 16px -2px rgba(110,230,255,.5) !important;
+}
+/* 载入中的按钮：脉动提示，让人知道它在干活 */
+@keyframes btn-working {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .55; }
+}
+html[data-ui-theme="dark"] body .gradio-button[disabled]:has(.spinner),
+html[data-ui-theme="dark"] body button[disabled].pending {
+  animation: btn-working 1.1s ease-in-out infinite;
+}
+
+/* 无障碍：系统开了「减少动态效果」就只保留颜色变化，不做位移/缩放 */
+@media (prefers-reduced-motion: reduce) {
+  button, .gradio-button, [type=button], .label-wrap, #themeBtn,
+  #newReportBtn, #refreshBtn, #dlBtn, .hist-card a {
+    transition-duration: .01ms !important;
+  }
+  button:active, .gradio-button:active, [type=button]:active,
+  #themeBtn:active, #newReportBtn:active, #refreshBtn:active,
+  #dlBtn:active, .label-wrap:active,
+  #tplUpload .upload-container:active {
+    transform: none !important;
+  }
+}
+
 /* 亮色下也让鲨鱼透出来：主要面板改成半透明白 */
 html:not([data-ui-theme="dark"]) body .gradio-container { position: relative; z-index: 1; }
 html:not([data-ui-theme="dark"]) body #appShell #composerBox,
@@ -764,18 +805,33 @@ button, .gradio-button, [type=button] {
   box-shadow: var(--app-shadow-xs) !important;
   padding: 8px 14px !important;
   min-height: 36px;
+  /* transform 也纳入过渡，按下才有回弹感 */
   transition: background-color .15s ease, border-color .15s ease,
-              box-shadow .15s ease, color .15s ease !important;
+              box-shadow .15s ease, color .15s ease,
+              transform .12s cubic-bezier(.34,1.56,.64,1) !important;
   text-shadow: none !important;
+  transform: translateZ(0);
 }
-button:hover, .gradio-button:hover {
+button:hover, .gradio-button:hover, [type=button]:hover {
   background: var(--app-muted) !important;
   border-color: var(--app-border-strong) !important;
 }
-button:active, .gradio-button:active { transform: none !important; }
-button:focus-visible, .gradio-button:focus-visible {
+/* 按下：轻微下沉 + 内阴影，松开有回弹（cubic-bezier 过冲） */
+button:active:not(:disabled), .gradio-button:active:not(:disabled),
+[type=button]:active:not(:disabled) {
+  transform: scale(.965) translateY(.5px) !important;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.14) !important;
+  transition-duration: .05s !important;
+}
+button:focus-visible, .gradio-button:focus-visible, [type=button]:focus-visible {
   outline: none !important;
   box-shadow: 0 0 0 3px var(--app-ring) !important;
+}
+button:disabled, .gradio-button:disabled, [type=button]:disabled {
+  opacity: .5 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 /* 主按钮：近黑填充 */
@@ -788,6 +844,14 @@ button.primary, .gradio-button.primary, button[variant="primary"] {
 button.primary:hover, .gradio-button.primary:hover {
   background: var(--app-primary-hover) !important;
   border-color: var(--app-primary-hover) !important;
+}
+/* 主按钮按下：再压暗一档，配合 scale 有「按实了」的手感 */
+button.primary:active:not(:disabled),
+.gradio-button.primary:active:not(:disabled),
+button[variant="primary"]:active:not(:disabled) {
+  background: var(--app-primary) !important;
+  filter: brightness(.86) !important;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,.22) !important;
 }
 button.primary:disabled {
   opacity: .45 !important;
@@ -896,6 +960,16 @@ textarea:focus, input:focus {
 #composerBox button.submit-button:hover, button.submit-button:hover {
   background: var(--app-primary-hover) !important;
   border-color: var(--app-primary-hover) !important;
+  box-shadow: 0 2px 10px -2px rgba(0,0,0,.28) !important;
+}
+/* 发送键按下：缩得更狠一点，像真的按到底 */
+#composerBox button.submit-button:active:not(:disabled),
+button.submit-button:active:not(:disabled) {
+  transform: scale(.9) !important;
+  background: var(--app-primary) !important;
+  filter: brightness(.85) !important;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,.3) !important;
+  transition-duration: .05s !important;
 }
 #composerBox button.submit-button svg { color: var(--app-primary-fg) !important; }
 
@@ -943,7 +1017,8 @@ textarea:focus, input:focus {
   font-family: var(--app-font) !important;
   font-size: 13px !important;
   font-weight: 400 !important;
-  transition: background-color .15s ease, border-color .15s ease !important;
+  transition: background-color .15s ease, border-color .15s ease,
+              transform .12s cubic-bezier(.34,1.56,.64,1) !important;
 }
 #tplUpload .upload-container:hover,
 #tplUpload [data-testid="file-upload"]:hover {
@@ -951,6 +1026,16 @@ textarea:focus, input:focus {
   background-color: #f5f5f5 !important;
   border-color: #737373 !important;
   color: #0a0a0a !important;
+}
+/* 投放区按下：整块往里收一点，虚线框变实边，像真的「放进去」 */
+#tplUpload .upload-container:active,
+#tplUpload [data-testid="file-upload"]:active {
+  background: #ededed !important;
+  background-color: #ededed !important;
+  border-color: #0a0a0a !important;
+  border-style: solid !important;
+  transform: scale(.994) !important;
+  transition-duration: .05s !important;
 }
 #tplUpload .upload-container > div,
 #tplUpload [data-testid="upload-text"] {
@@ -1072,6 +1157,13 @@ input[type="checkbox"]:focus-visible {
   font-weight: 550 !important;
   min-height: 32px !important;
   padding: 5px 12px !important;
+}
+/* 下载键按下：缩一下 + 边框收紧，点了有回应 */
+#dlBtn:active:not(:disabled) {
+  transform: scale(.95) !important;
+  background: var(--app-muted-hover) !important;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.16) !important;
+  transition-duration: .05s !important;
 }
 #dlStatus { padding: 8px 14px 0 !important; }
 #dlStatus p, #dlStatus .prose p {
@@ -1272,7 +1364,7 @@ html[data-ui-theme="dark"] body .gradio-container div.progress-bar > div {
   border: none !important;
   transform: none !important;
   overflow: hidden !important;
-  transition: color .15s ease !important;
+  transition: color .15s ease, transform .12s cubic-bezier(.34,1.56,.64,1) !important;
 }
 /* gradio 原本塞了一个 ▼ 字形，这里用 0 号字压掉，只留我们的 [±] */
 .label-wrap .icon { font-size: 0 !important; }
@@ -1313,6 +1405,14 @@ details > summary:hover, .label-wrap:hover {
   color: var(--app-fg) !important;
 }
 details > summary:hover, .label-wrap:hover { background: var(--app-muted) !important; }
+/* 折叠标题按下：底色压深一档，`[+]` 同时缩一下，点开有回应 */
+details > summary:active, .label-wrap:active {
+  background: var(--app-muted-hover) !important;
+  transition-duration: .05s !important;
+}
+details > summary:active .icon, .label-wrap:active .icon {
+  transform: scale(.82) !important;
+}
 details[open] > summary, .label-wrap.open {
   border-bottom: none !important;
   color: var(--app-fg) !important;
@@ -1420,13 +1520,20 @@ hr { border: none !important; border-top: 1px solid var(--app-border) !important
   box-shadow: none !important;
   font-size: 14px !important;
   opacity: .75;
-  transition: background-color .15s ease, color .15s ease, opacity .15s ease !important;
+  transition: background-color .15s ease, color .15s ease, opacity .15s ease,
+              transform .12s cubic-bezier(.34,1.56,.64,1) !important;
 }
 #themeBtn:hover {
   background: var(--app-muted) !important;
   color: var(--app-fg) !important;
   border-color: var(--app-border) !important;
   opacity: 1;
+}
+/* 主题键按下：缩一下 + 图标转个小角度，像被按进去再弹回 */
+#themeBtn:active {
+  transform: scale(.88) rotate(-18deg) !important;
+  background: var(--app-muted) !important;
+  transition-duration: .06s !important;
 }
 
 /* ─────────── 滚动条 ─────────── */
@@ -1552,6 +1659,13 @@ html[data-ui-theme="dark"] body #appShell .side-brand h1 {
   background: var(--app-muted) !important;
   border: none !important;
 }
+/* 新建报告按下：轻微内缩，不位移（它是整行，位移会晃） */
+#newReportBtn:active {
+  background: var(--app-muted-hover) !important;
+  transform: scale(.988) !important;
+  box-shadow: none !important;
+  transition-duration: .05s !important;
+}
 
 /* 暗色下 primary 保持扁平，只靠 hover 显底 */
 html[data-ui-theme="dark"] body #appShell #newReportBtn {
@@ -1563,6 +1677,10 @@ html[data-ui-theme="dark"] body #appShell #newReportBtn:hover {
   background: #262626 !important;
   border-color: transparent !important;
   color: #fafafa !important;
+}
+html[data-ui-theme="dark"] body #appShell #newReportBtn:active {
+  background: #303030 !important;
+  box-shadow: inset 0 0 0 1px rgba(110,230,255,.22) !important;
 }
 
 /* 侧栏里的折叠面板：去卡片化，做成小节标题 */
@@ -1612,6 +1730,13 @@ html[data-ui-theme="dark"] body #appShell #newReportBtn:hover {
   color: var(--app-fg) !important;
   opacity: 1;
 }
+/* 刷新按下：图标转 90°（用 span 承接，不影响按钮本身） */
+#refreshBtn:active {
+  transform: scale(.94) !important;
+  color: var(--app-accent) !important;
+  transition-duration: .05s !important;
+}
+#refreshBtn:active span { display: inline-block; transform: rotate(90deg); }
 
 .side-foot {
   margin-top: auto;
@@ -1693,6 +1818,12 @@ html[data-ui-theme="dark"] body #appShell #newReportBtn:hover {
   background: transparent !important;
   text-decoration: underline !important;
   text-underline-offset: 2px;
+}
+/* 历史卡下载链按下：字往下沉一点，像被点住 */
+.hist-card a:active, .prose .hist-card a:active {
+  transform: translateY(1px) !important;
+  opacity: .65 !important;
+  transition-duration: .04s !important;
 }
 .hist-card .h-meta {
   font-size: 10px !important;
@@ -1798,6 +1929,13 @@ html[data-ui-theme="dark"] body #appShell #tplUpload [class*="icon"] {
 html[data-ui-theme="dark"] body #appShell #tplUpload .upload-container:hover {
   background: #262626 !important;
   border-color: #737373 !important;
+}
+html[data-ui-theme="dark"] body #appShell #tplUpload .upload-container:active {
+  background: #303030 !important;
+  border-color: #6ee6ff !important;
+  border-style: solid !important;
+  transform: scale(.994) !important;
+  box-shadow: inset 0 0 12px -4px rgba(110,230,255,.35) !important;
 }
 html[data-ui-theme="dark"] body #appShell #tplUpload .upload-container::after,
 html[data-ui-theme="dark"] body #appShell #tplUpload [data-testid="file-upload"]::after {
