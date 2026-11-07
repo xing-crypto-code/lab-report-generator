@@ -161,6 +161,25 @@ def detect_experiment_type(ocr_text: str) -> str:
     return best if scores[best] > 0 else "物理实验"
 
 
+def _tables_to_markdown(tables: list) -> str:
+    """把识别到的表格渲染成 Markdown。
+    原来用 str(list) 直接拼，模型看到的是一串 Python repr（带引号/逗号），
+    既费 token 又难对齐行列，数据经常填不进去。"""
+    out = []
+    for i, rows in enumerate(tables or [], 1):
+        if not rows:
+            continue
+        width = max(len(r) for r in rows)
+        norm = [list(r) + [""] * (width - len(r)) for r in rows]
+        out.append(f"### 表格 {i}")
+        out.append("| " + " | ".join(str(c).replace("\n", " ") for c in norm[0]) + " |")
+        out.append("| " + " | ".join(["---"] * width) + " |")
+        for r in norm[1:]:
+            out.append("| " + " | ".join(str(c).replace("\n", " ") for c in r) + " |")
+        out.append("")
+    return "\n".join(out).strip()
+
+
 def _sections_from_template_summary(summary: str) -> list[str]:
     """从模板摘要里抠出"识别到的章节"，当作本次要输出的键。
 
@@ -324,7 +343,7 @@ def generate_report(
 {ocr_text[:8000]}
 {_md_block}
 ## 识别到的表格数据
-{chr(10).join(str(t) for t in ocr_tables) if ocr_tables else '（无表格数据）'}
+{_tables_to_markdown(ocr_tables) if ocr_tables else '（无表格数据）'}
 {_req_block}
 【模板章节对齐（硬性要求）】
 sections 的键**只能**是这 {len(tpl_sections)} 个：「{'、'.join(tpl_sections)}」

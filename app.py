@@ -377,6 +377,28 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
         return gr.update(), "❌ 出现错误", err, "\n".join(status)
 
 
+def composer_submit_stream(message, template_file, api_key, api_base, model,
+                           use_builtin, progress=gr.Progress()):
+    """把 composer_submit 包一层生成器，让「点击发送」立刻有反馈。
+
+    gradio 的事件只有在函数返回后才会刷新界面，生成要几十秒，
+    这段时间输入框里的文字和附件一直挂着，用户会以为没提交成功。
+    这里先 yield 一次：清空输入框 + 提示正在生成，再跑真正的流程。
+    """
+    yield (
+        chat_mod.render_chat_preview(chat_mod._session),
+        gr.update(),                       # 下载按钮
+        "⏳ 正在生成，别急…",                # 状态文字
+        gr.update(),                       # 预览
+        "⏳ 已收到，开始处理…",              # 日志
+        gr.update(value=None),             # ← 立刻清空输入框（文字 + 附件）
+    )
+    result = composer_submit(message, template_file, api_key, api_base, model,
+                             use_builtin, progress)
+    # composer_submit 返回 5 元组，补上输入框的清空
+    yield (*result, gr.update(value=None))
+
+
 def refresh_history_ui():
     """返回最新的历史面板 HTML，供刷新按钮/生成后调用"""
     return history_mod.render_history_html()
@@ -1307,6 +1329,29 @@ html[data-ui-theme="dark"] body .gradio-container div.progress-bar > div {
   box-shadow: 0 0 10px rgba(110,230,255,.45) !important;
 }
 .preview-panel:has(.r-wrap) { display: block; padding: 12px !important; }
+
+/* ── 生成完成的入场动效 ──
+   预览内容是新插入的节点，CSS 动画会自动播放一次，
+   一眼就能看出「出稿了」，不用盯着日志。 */
+@keyframes result-pop {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes result-glow {
+  0%   { box-shadow: inset 0 0 0 1px rgba(110,230,255,0); }
+  45%  { box-shadow: inset 0 0 0 1px rgba(110,230,255,.45),
+                     inset 0 0 40px -10px rgba(110,230,255,.30); }
+  100% { box-shadow: inset 0 0 0 1px rgba(110,230,255,0); }
+}
+.preview-panel .r-wrap { animation: result-pop .42s cubic-bezier(.2,.8,.3,1) both; }
+html[data-ui-theme="dark"] body .preview-panel:has(.r-wrap) {
+  animation: result-glow 1.1s ease-out 1;
+}
+#dlStatus p { animation: result-pop .5s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .preview-panel .r-wrap, #dlStatus p,
+  html[data-ui-theme="dark"] body .preview-panel:has(.r-wrap) { animation: none !important; }
+}
 
 /* ─────────── 文档预览（纸张）─────────── */
 .r-wrap {
@@ -2303,9 +2348,9 @@ def build_ui():
 
         # ── 发送（Box 内回车 / ➤ 按钮 都走同一入口）──
         composer.submit(
-            fn=composer_submit,
+            fn=composer_submit_stream,
             inputs=[composer, template_in, api_key_in, api_base_in, model_sel, use_builtin],
-            outputs=[chat_display, download_btn, download_status, preview_out, log_out],
+            outputs=[chat_display, download_btn, download_status, preview_out, log_out, composer],
         ).then(
             fn=refresh_history_ui, inputs=[], outputs=[history_out],
         )

@@ -301,19 +301,39 @@ def parse_docx(file_path: str) -> dict:
             full_text.append(text)
 
     # 提取表格
-    for table in doc.tables:
+    # 表格里的内容同样要并进正文：很多指导书/报告单的正文几乎全在表格里，
+    # 只给 paragraphs 会导致 ocr_text 几乎为空，AI 拿不到任何数据。
+    for ti, table in enumerate(doc.tables, 1):
         rows_data = []
         for row in table.rows:
             cells = [cell.text.strip() for cell in row.cells]
             rows_data.append(cells)
         if rows_data:
             all_tables.append(rows_data)
+            full_text.append(_table_to_markdown(rows_data, title=f"第 {ti} 个表格"))
 
     return {
-        "text": "\n".join(full_text),
+        "text": "\n\n".join(full_text),
         "tables": all_tables,
         "page_count": None  # docx 没有明确页数概念
     }
+
+
+def _table_to_markdown(rows: list, title: str = "") -> str:
+    """把二维表格转成 Markdown，方便模型直接读懂行列关系。"""
+    if not rows:
+        return ""
+    width = max(len(r) for r in rows)
+    norm = [list(r) + [""] * (width - len(r)) for r in rows]
+    lines = []
+    if title:
+        lines.append(f"### {title}")
+    # 第一行当表头；没表头的表也照样输出，模型能自己判断
+    lines.append("| " + " | ".join(c.replace("\n", " ") for c in norm[0]) + " |")
+    lines.append("| " + " | ".join(["---"] * width) + " |")
+    for r in norm[1:]:
+        lines.append("| " + " | ".join(c.replace("\n", " ") for c in r) + " |")
+    return "\n".join(lines)
 
 
 def parse_markdown(file_path: str) -> dict:

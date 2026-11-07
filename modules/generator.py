@@ -892,32 +892,11 @@ def _fill_row_target(table, ri, ci, content, ncols):
 
 
 def _set_or_append_cell(cell, content):
-    """整行即章节时：保留 label，清掉模板多余空行后写入内容"""
-    from docx.oxml.ns import qn as _qn
-    tc = cell._tc
-    # 移除除第一个段落外的所有空段落（模板占位的空行）
-    ps = tc.findall(_qn('w:p'))
-    for p in ps[1:]:
-        # 空段落（无 run 或无文字）
-        texts = p.findall('.//' + _qn('w:t'))
-        if not any((t.text or "").strip() for t in texts):
-            tc.remove(p)
-    # 找到 label 段，在其后追加内容各段
-    ps2 = tc.findall(_qn('w:p'))
-    anchor = ps2[0] if ps2 else None
-    parts = [x for x in content.split("\n") if x.strip()]
-    for part in parts:
-        p = tc.makeelement(_qn('w:p'), {})
-        # create a run
-        r = tc.makeelement(_qn('w:r'), {})
-        t = tc.makeelement(_qn('w:t'), {})
-        t.text = part
-        r.append(t)
-        p.append(r)
-        if anchor is not None:
-            anchor.addnext(p)
-        else:
-            tc.append(p)
+    """整行即章节时：保留 label，清掉正文后写入内容（支持 Markdown 表格）。
+
+    原来这里是把行按 \\n 拆成纯段落追加，Markdown 表格会被当成普通文字行，
+    做出来的表只剩表头 → 现在统一走 _set_cell_text，表格能变成真表格。"""
+    _set_cell_text(cell, content)
 
 
 def _append_cell_content(cell, content):
@@ -951,10 +930,28 @@ def _section_is_placeholder_only(text):
     return all(tok.strip().lower() in placeholder_words for tok in tokens)
 
 
+def _strip_cell_body(tc, keep_paras=1):
+    """清掉单元格里除前 keep_paras 个段落以外的所有内容（段落 + 嵌套表）。
+
+    填充逻辑可能对同一个单元格触发多次（合并单元格在 row.cells 里会重复出现），
+    之前只删空段落，已经插进去的嵌套表会越堆越多 —— 一张表变成 6 张。
+    所以每次写入前先把正文区彻底清干净，保证幂等。"""
+    keep = 0
+    for child in list(tc):
+        tag = child.tag.split('}')[-1]
+        if tag == 'p' and keep < keep_paras:
+            keep += 1
+            continue
+        if tag == 'tcPr':
+            continue
+        tc.remove(child)
+
+
 def _set_cell_text(cell, content):
     """把 content 写入单元格。支持 Markdown 表格（转成真正的 Word 嵌套表格）
     和【此处插入接线图】这类图片占位（转成虚线框让用户后续贴图）。
-    若单元格含章节名 label 则保留 label、清空其后空占位段，再写内容/表格/占位框。"""
+    若单元格含章节名 label 则保留 label、清空其后空占位段，再写内容/表格/占位框。
+    每次都先清空正文区，重复调用不会叠内容。"""
     items = _iter_render_items(content)
     tc = cell._tc
     paragraphs = cell.paragraphs
@@ -964,8 +961,8 @@ def _set_cell_text(cell, content):
                      and len(paragraphs) > 0 and first_text != "")
 
     if is_label_cell and paragraphs:
-        # 保留 label 段，删除其后空占位段
-        _clear_empty_paras(tc)
+        # 保留 label 段，其余正文/嵌套表全部清掉（保证幂等）
+        _strip_cell_body(tc, keep_paras=1)
         # label 段也统一到正文行距/字距，避免整栏一处松一处紧
         # 同时清掉模板可能残留的异常缩进（如 firstLineChars=49 会右移半行）
         _apply_para_format(paragraphs[0], first_line_indent_chars=0)
@@ -997,7 +994,8 @@ def _set_cell_text(cell, content):
             else:
                 anchor = _insert_styled_para(tc, anchor, it["text"], heading=False)
     else:
-        # 普通值格：清空首段后按 items 顺序渲染
+        # 普通值格：清空整格内容（含旧嵌套表）后按 items 顺序渲染
+        _strip_cell_body(tc, keep_paras=1)
         if cell.paragraphs:
             first = cell.paragraphs[0]
             for r in list(first.runs):
