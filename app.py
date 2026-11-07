@@ -24,6 +24,7 @@ for _k in (
 
 import gradio as gr
 import os
+import re
 
 from config import UPLOAD_DIR, OUTPUT_DIR, LLM_MODEL, LLM_BASE_URL, BASE_DIR, TEMPLATE_DIR
 from modules.parser import parse_document
@@ -130,8 +131,12 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
     manuals = _norm(manual_file)
     templates = _norm(template_file)
 
-    if not manuals:
-        return gr.update(), "*请上传文件后生成*", "*请上传实验指导手册（可多个）*", "❌ 请上传实验指导手册（PDF/图片/Word/Markdown，可多选）"
+    if not manuals and not (requirement or "").strip():
+        return (gr.update(),
+                "❌ 没有材料",
+                "*上传实验指导书，或直接写清楚要做什么实验*",
+                "❌ 既没传指导书，也没有文字说明。\n"
+                "   点左侧 📎 传指导书，或者在输入框写「实验几、做什么、要哪些章节」。")
 
     if api_key and api_key.strip():
         os.environ["LLM_API_KEY"] = api_key.strip()
@@ -139,9 +144,9 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
         os.environ["LLM_BASE_URL"] = api_base.strip()
 
     status = []
-    # on_progress 回调：每次都追加到 status 并尽量实时外发（梯进式刷新）
+    # on_progress 回调：追加到 status（作为日志），并尽量实时外发给进度条
     def report(t):
-        report(t)
+        status.append(t)
         if on_progress:
             try:
                 on_progress(t)
@@ -150,7 +155,8 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
 
     try:
         # ── 第1步：解析实验指导手册（支持多文件）──
-        report(f"🔍 正在解析 {len(manuals)} 个实验指导手册…")
+        if manuals:
+            report(f"🔍 正在解析 {len(manuals)} 个实验指导手册…")
         merged_text_parts = []
         merged_md_parts = []
         merged_tables = []
@@ -179,10 +185,23 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
                 merged_md_parts.append(f"【来源：{Path(mf).name} 结构化原文】\n{_md}")
             report(f"   ✓ 《{Path(mf).name}》识别 {len(ocr_text):,} 字符，{len(ocr_tables)} 个表格"
                           + (f"，结构化 {len(_md)} 字符" if _md else ""))
+        # 没传指导书时的退路：把用户在输入框写的文字当实验说明，照样能出稿
+        # （有指导书的准确度更高，所以在日志里提示一句）
+        if not manuals:
+            _req = (requirement or "").strip()
+            if _req:
+                report("📝 没上传指导书，按你写下的实验说明生成（补一份指导书会更准）")
+                merged_text_parts.append(f"【用户提供的实验说明】\n{_req}")
+            else:
+                report("❌ 既没有指导书，也没有文字说明，无法生成")
         ocr_text = "\n\n".join(merged_text_parts)
         source_markdown = "\n\n".join(merged_md_parts)
         if not ocr_text.strip():
-            return gr.update(), "*解析失败*", "*未能从文件中识别出文字*", "❌ 未能从上传文件中识别到文字内容"
+            return (gr.update(),
+                    "❌ 没有可用材料",
+                    "*请上传实验指导书，或在输入框写明实验内容*",
+                    "❌ 没有拿到任何可用的实验材料：既没上传指导书，输入框也是空的。\n"
+                    "   要么点左侧 📎 传一份指导书，要么直接写清楚「做什么实验、要哪些章节」。")
 
         # 自动检测实验类型
         exp_type = detect_experiment_type(ocr_text)
@@ -260,12 +279,14 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
         report("")
 
         # ── 第3步：AI 填充 ──
-        report(f"🤖 正在调用 {model} 生成实验报告…")
+        report(f"🤖 正在调用 {model or LLM_MODEL} 生成实验报告…")
         if requirement and requirement.strip():
             report(f"   📌 附加要求：{requirement.strip()[:80]}")
         # 显式传入 UI 的 api_base/api_key（或 None → 按模型自动路由到对应 provider）
+        # 注意：这里要用累积的 merged_tables，不能再用循环里的 ocr_tables
+        # （多文件时它只是最后一个文件的表格；无文件时根本没定义）
         filled = generate_report(
-            ocr_text, ocr_tables, t_summary, model=model,
+            ocr_text, merged_tables, t_summary, model=model,
             api_key=api_key, api_base=api_base,
             requirement=requirement,
             source_markdown=source_markdown,
@@ -291,8 +312,15 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
 
         # ── 第4步：生成文档 ──
         report("📝 正在生成最终文档…")
-        manual_name = Path(manuals[0]).stem
-        output_name = f"{manual_name}_实验报告"
+        if manuals:
+            manual_name = Path(manuals[0]).stem
+        else:
+            # 没有指导书：优先用 AI 识别出的实验名，退化用实验类型
+            _secs = filled.get("sections", {}) or {}
+            manual_name = (_secs.get("实验名称") or "").strip() or exp_type.replace("/", "-")
+        # 文件名清洗：Windows 不允许 \ / : * ? " < > |，AI 给的实验名常带「/」
+        manual_name = re.sub(r'[\\/:*?"<>|\r\n\t]+', "_", manual_name).strip(" ._")[:40] or "实验"
+        output_name = manual_name if manual_name.endswith("报告") else f"{manual_name}_实验报告"
 
         result_paths = generate_report_document(
             template_path=template_path,
@@ -342,8 +370,9 @@ def process_files(manual_file, template_file, api_key, api_base, model, use_buil
 
     except Exception as e:
         import traceback
+        tb = traceback.format_exc()
         report(f"\n❌ 出错：{e}")
-        report(f"```\ntraceback.format_exc()[:600]```")
+        report("```\n" + tb[:1200] + "\n```")
         err = f"*❌ 生成出错：{e}*"
         return gr.update(), "❌ 出现错误", err, "\n".join(status)
 
@@ -391,24 +420,31 @@ def composer_submit(message, template_file, api_key, api_base, model, use_builti
         if p:
             files.append(str(p))
 
-    # ── A. 带文件 → 生成报告 ──
-    if files:
-        chat_mod._session.append((
-            "user",
-            (text + "\n" if text else "") + f"📎 已上传 {len(files)} 个文件：" +
-            "、".join(Path(p).name for p in files),
-        ))
+    # ── A. 生成报告 ──
+    # 两种情况都算「要出新稿」：
+    #   1) 上传了指导书
+    #   2) 没传文件，但写了文字，而且还没有出过稿（这时文字就是实验说明）
+    _has_ctx = bool(chat_mod.get_context().get("sections"))
+    _want_new = bool(files) or (bool(text) and not _has_ctx)
+    if _want_new:
+        if files:
+            _msg = (text + "\n" if text else "") + \
+                   f"📎 已上传 {len(files)} 个文件：" + "、".join(Path(p).name for p in files)
+        else:
+            _msg = text + "\n📝 没传指导书，直接按这段说明生成"
+        chat_mod._session.append(("user", _msg))
         try:
             _step = [0]
             _total_steps = 6          # 解析→识别→检索→生成→排版→落盘
             def _on_p(msg):
-                # ASCII 进度条：[████████·······] 52%  状态文本
+                # gr.Progress 的签名是 (progress: float, desc: str)
+                # 所以进度值走第一个参数，ASCII 条放进 desc，别把字符串当进度传
                 _step[0] = min(_total_steps, _step[0] + 1)
                 frac = _step[0] / _total_steps
                 filled = int(round(frac * 16))
                 bar = "█" * filled + "░" * (16 - filled)
                 pct = int(round(frac * 100))
-                progress(f"[{bar}] {pct:3d}%  " + msg.replace("\n", " "))
+                progress(frac, desc=f"[{bar}] {pct:3d}%  " + msg.replace("\n", " "))
             dl, dl_status, preview, log = process_files(
                 files, template_file, api_key, api_base, model, use_builtin,
                 requirement=text,
@@ -429,11 +465,12 @@ def composer_submit(message, template_file, api_key, api_base, model, use_builti
     if not text:
         return chat_mod.render_chat_preview(chat_mod._session), _nochange, _nochange, _nochange, _nochange
 
-    # ── C. 无文件、有文字 → 对话修订 ──
+    # ── C. 无文件、有文字，且已经有稿 → 对话修订 ──
+    # （没稿的情况在上面的 A 分支已经当作「按说明生成」处理了，这里是兜底）
     if not chat_mod.get_context().get("sections"):
         chat_mod._session.append(("user", text))
-        chat_mod._session.append(("ai", "⚠️ 还没有报告可以改。请先用输入框左侧 📎 上传实验指导书，"
-                                        "我会先生成第一版。"))
+        chat_mod._session.append(("ai", "⚠️ 暂时没法处理这条。传一份指导书，"
+                                        "或先把实验内容写清楚，我再出第一版。"))
         return chat_mod.render_chat_preview(chat_mod._session), _nochange, _nochange, _nochange, _nochange
 
     chat_mod._session.append(("user", text))
