@@ -459,14 +459,12 @@ def composer_submit(message, template_file, api_key, api_base, model, use_builti
             _step = [0]
             _total_steps = 6          # 解析→识别→检索→生成→排版→落盘
             def _on_p(msg):
-                # gr.Progress 的签名是 (progress: float, desc: str)
-                # 所以进度值走第一个参数，ASCII 条放进 desc，别把字符串当进度传
+                # 进度做成「转圈圆圈 + % + 一句话」的轻量观感：
+                # 百分比和消息合到 desc 里一行显示，圆圈由前端 CSS 的 ::before 画。
                 _step[0] = min(_total_steps, _step[0] + 1)
                 frac = _step[0] / _total_steps
-                filled = int(round(frac * 16))
-                bar = "█" * filled + "░" * (16 - filled)
                 pct = int(round(frac * 100))
-                progress(frac, desc=f"[{bar}] {pct:3d}%  " + msg.replace("\n", " "))
+                progress(frac, desc=f"{pct}%  ·  " + msg.replace("\n", " "))
             dl, dl_status, preview, log = process_files(
                 files, template_file, api_key, api_base, model, use_builtin,
                 requirement=text,
@@ -1301,33 +1299,48 @@ input[type="checkbox"]:focus-visible {
   0%, 100% { opacity: .45; }
   50%      { opacity: 1; }
 }
-/* gradio 自带的进度条：暗色下换成终端观感 */
+/* gradio 自带的进度浮层：藏掉机器人图标 + 横条 + 独立%区，
+   改成「转圈小圆圈 + % + 一句话」这样一行轻量进度。 */
+/* 1) 整体文字排版 */
 .gradio-container .progress-text,
 .gradio-container .eta-bar { font-family: var(--app-font) !important; }
 html[data-ui-theme="dark"] body .gradio-container .progress-text,
-html[data-ui-theme="dark"] body .gradio-container .progress-level-inner,
 html[data-ui-theme="dark"] body .gradio-container .eta-bar {
   font-family: var(--app-mono) !important;
-  font-size: 12px !important;
-  color: var(--app-accent) !important;
-  letter-spacing: 0;
+  font-size: 13px !important;
+  letter-spacing: .2px;
 }
-.gradio-container .progress-bar,
-.gradio-container .progress-level-inner {
-  background: var(--app-muted) !important;
-  color: var(--app-fg) !important;
-  border-radius: 6px !important;
+/* 2) 去掉灰色横条 */
+.gradio-container .progress-bar-wrap { display: none !important; }
+/* 3) 去掉 gradio 自带的加载/机器人图标 */
+.gradio-container p.loading { display: none !important; }
+/* 4) 独立百分比数字区（progress-level）藏掉——
+    % 已经拼进进度文本，避免圆圈的百分比和它重复 */
+.gradio-container .progress-level,
+.gradio-container .progress-level-inner { display: none !important; }
+/* 5) 进度文本本身：一行，首部用 ::before 画一个自转圆圈 */
+.gradio-container .progress-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 16px;
 }
-.gradio-container .progress-bar .progress-level,
-.gradio-container div.progress-bar > div {
-  background: var(--app-fg) !important;
-  border-radius: 6px !important;
+.gradio-container .progress-text::before {
+  content: "";
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--app-fg) 28%, transparent);
+  border-top-color: var(--app-fg);
+  animation: progress-spin .7s linear infinite;
 }
-html[data-ui-theme="dark"] body .gradio-container .progress-bar .progress-level,
-html[data-ui-theme="dark"] body .gradio-container div.progress-bar > div {
-  background: var(--app-accent) !important;
-  box-shadow: 0 0 10px rgba(110,230,255,.45) !important;
+html[data-ui-theme="dark"] body .gradio-container .progress-text::before {
+  border-color: rgba(110,230,255,.22);
+  border-top-color: var(--app-accent);
+  box-shadow: 0 0 8px rgba(110,230,255,.35);
 }
+@keyframes progress-spin { to { transform: rotate(360deg); } }
 .preview-panel:has(.r-wrap) { display: block; padding: 12px !important; }
 
 /* ── 生成完成的入场动效 ──
