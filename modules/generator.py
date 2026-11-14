@@ -53,12 +53,14 @@ def _is_heading_line(text: str) -> bool:
 
 
 # 二级/三级列举项：1. / 1） / （1） / ① —— 这类是正文里的条目，不算标题
-_LIST_RE = _re.compile(r"^(?:\d+[\.、．)]|[（(]\d+[）)]|[①②③④⑤⑥⑦⑧⑨⑩]|[a-zA-Z][\.、)])")
+# 注意：数字和分隔符之间允许空格（模型常写成 `1 .`），必须容忍，否则会被当成
+# 正文重新编号，出现 `1. 1 .` 这种前缀叠前缀的毛病（用户实测反馈）。
+_LIST_RE = _re.compile(r"^(?:\d+\s*[\.、．)）]|[（(]\d+[）)]|[①②③④⑤⑥⑦⑧⑨⑩]|[a-zA-Z]\s*[\.、)])")
 
 # 从各种编号写法里抽出「序号数字」与「分隔符」
 _NUM_PREFIX_RE = _re.compile(
     r"^(?:(?P<arabic>\d+)\s*(?P<sep>[\.、．)）])\s*|[（(](?P<par>\d+)[）)]\s*"
-    r"|(?P<circ>[①②③④⑤⑥⑦⑧⑨⑩])\s*|(?P<alpha>[a-zA-Z])[\.、)]\s*)"
+    r"|(?P<circ>[①②③④⑤⑥⑦⑧⑨⑩])\s*|(?P<alpha>[a-zA-Z])\s*[\.、)]\s*)"
 )
 _CIRCLE_MAP = {c: i + 1 for i, c in enumerate("①②③④⑤⑥⑦⑧⑨⑩")}
 
@@ -181,7 +183,10 @@ def _strip_num_prefix(text):
     s = (text or "").strip()
     m = _NUM_PREFIX_RE.match(s)
     if m:
-        return s[m.end():].strip()
+        rest = s[m.end():].strip()
+        # 换括号+句点混合写的 `2).` / `1）.`：去掉括号后缀残留的句点/顿号
+        rest = _re.sub(r"^[\.、．)]+", "", rest).strip()
+        return rest
     return s
 
 
@@ -400,6 +405,67 @@ def _template_section_names(doc, template_summary=""):
     return names
 
 
+def _apply_autofit_window(tbl, weights=None):
+    """把表格设为 Word 原生的「根据窗口调整表格」(AutoFit to Window)：
+    tblLayout=autofit + tblW=100% (pct 5000) + 各列按比例转成 pct 宽度。
+
+    用户实测反馈：生成的表格一律左对齐，必须手动「选中表格→右键→自动调整→
+    根据窗口调整表格」才能铺满版心。这里把 Word 手工操作的最终状态直接写进文档，
+    让表格自动贴满页面宽度，不再需要手动操作。
+
+    weights: 若给定时按该比例分配列宽（用于按内容算出的紧凑比例）；否则按 tblGrid
+    现有列宽比例。
+    """
+    from docx.oxml.ns import qn as _qn
+    tblPr = tbl.tblPr
+    if tblPr is None:
+        tblPr = tbl.makeelement(_qn('w:tblPr'), {})
+        tbl.insert(0, tblPr)
+    # 布局 = autofit
+    layout = tblPr.find(_qn('w:tblLayout'))
+    if layout is None:
+        layout = tblPr.makeelement(_qn('w:tblLayout'), {})
+        tblPr.append(layout)
+    layout.set(_qn('w:type'), 'autofit')
+    # 总宽 = 100%
+    tblW = tblPr.find(_qn('w:tblW'))
+    if tblW is None:
+        tblW = tblPr.makeelement(_qn('w:tblW'), {})
+        tblPr.append(tblW)
+    tblW.set(_qn('w:type'), 'pct')
+    tblW.set(_qn('w:w'), '5000')
+    # 各列宽比（有显式权重优先，否则按现有 tblGrid）
+    if weights is None:
+        grid = tbl.find(_qn('w:tblGrid'))
+        cols = grid.findall(_qn('w:gridCol')) if grid is not None else []
+        weights = [max(1, int(c.get(_qn('w:w')) or 1)) for c in cols]
+    weights = [max(1, int(w)) for w in (weights or [1])]
+    total = sum(weights)
+    # 按比例把每个 cell 的 tcW 转成 pct（总和≈5000），含 gridSpan 的合并格累加
+    for tr in tbl.findall(_qn('w:tr')):
+        ci = 0
+        for tc in tr.findall(_qn('w:tc')):
+            tcPr = tc.find(_qn('w:tcPr'))
+            if tcPr is None:
+                tcPr = tc.makeelement(_qn('w:tcPr'), {})
+                tc.insert(0, tcPr)
+            gs = tcPr.find(_qn('w:gridSpan'))
+            span = int(gs.get(_qn('w:val'))) if gs is not None else 1
+            ie = min(ci + span, len(weights))
+            spanw = sum(weights[ci:ie]) or 1
+            pct = round(spanw / total * 5000)
+            w_el = tcPr.find(_qn('w:tcW'))
+            if w_el is None:
+                w_el = tcPr.makeelement(_qn('w:tcW'), {})
+                tcPr.append(w_el)
+            w_el.set(_qn('w:type'), 'pct')
+            w_el.set(_qn('w:w'), str(pct))
+            ci = ie
+    # 去掉左缩进，避免额外右移
+    for old in tblPr.findall(_qn('w:tblInd')):
+        tblPr.remove(old)
+
+
 def _normalize_table_layout(doc):
     """对【任意模板】统一表格横向定位与宽度，保证上下表左右边框重合。
 
@@ -427,49 +493,24 @@ def _normalize_table_layout(doc):
         if tblPr is None:
             continue
 
-        # 宽度统一 = 版心宽（按比例缩放）
+        # 宽度按比例缩放到版心宽，再整体「根据窗口调整表格」铺满。
+        # 旧实现写死 tblLayout=fixed + tblW=dxa(版心)，用户实测每次都要手动
+        # 选中表格→自动调整→根据窗口调整表格；改为 autofit window 后自动铺满。
         g = tbl.find(_qn('w:tblGrid'))
         cols = g.findall(_qn('w:gridCol')) if g is not None else []
-        old = [int(c.get(_qn('w:w')) or 0) for c in cols]
+        old = [max(1, int(c.get(_qn('w:w')) or 0)) for c in cols]
         cur = sum(old)
-        if cols and cur and cur != body_w:
-            scaled = [max(1, round(w * body_w / cur)) for w in old]
+        if cols and cur:
+            scale = body_w / cur
+            scaled = [max(1, round(w * scale)) for w in old]
+            # 保证总和恰好 = body_w，把取整误差放进最后一列
             scaled[-1] += body_w - sum(scaled)
             for c, w in zip(cols, scaled):
                 c.set(_qn('w:w'), str(w))
-            tblW = tblPr.find(_qn('w:tblW'))
-            if tblW is None:
-                tblW = tblPr.makeelement(_qn('w:tblW'), {})
-                tblPr.append(tblW)
-            tblW.set(_qn('w:type'), 'dxa')
-            tblW.set(_qn('w:w'), str(body_w))
-            # 同步每行 tcW（按 gridSpan 累加）
-            for row in t.rows:
-                seen = set()
-                idx = 0
-                for c in row.cells:
-                    if id(c._tc) in seen:
-                        continue
-                    seen.add(id(c._tc))
-                    tcPr = c._tc.find(_qn('w:tcPr'))
-                    if tcPr is None:
-                        idx += 1
-                        continue
-                    gs = tcPr.find(_qn('w:gridSpan'))
-                    span = int(gs.get(_qn('w:val'))) if gs is not None else 1
-                    w_el = tcPr.find(_qn('w:tcW'))
-                    if w_el is not None:
-                        w_el.set(_qn('w:type'), 'dxa')
-                        w_el.set(_qn('w:w'),
-                                 str(sum(scaled[idx:min(idx + span, len(scaled))])))
-                    idx += span
-
-        # 布局必须 fixed：autofit 会让 Word 忽略我们设的列宽，边框随内容漂移
-        layout = tblPr.find(_qn('w:tblLayout'))
-        if layout is None:
-            layout = tblPr.makeelement(_qn('w:tblLayout'), {})
-            tblPr.append(layout)
-        layout.set(_qn('w:type'), 'fixed')
+            # autofit window：tblLayout=autofit + tblW=pct(100%) + 各列按 scaled 比例
+            _apply_autofit_window(tbl, weights=scaled)
+        else:
+            _apply_autofit_window(tbl)
 
         # ── 定位统一（强制重建 tblpPr，彻底清掉模板残留的 tblpX 偏移）──
         # 老师模板里表0 常用 tblpXSpec=center、主表用 horzAnchor=page+tblpX=1157，
@@ -1489,13 +1530,11 @@ def _visual_units(s) -> int:
     return sum(2 if ord(ch) > 127 else 1 for ch in str(s))
 
 
-def _size_table_compact(table, rows, available=None):
-    """按内容给定列宽，不让表格撑满整栏。
-
-    撑满整栏后，两列之间的空白会大到像"楚河汉界"——指导书里的数据表都是紧凑的，
-    列宽只比表头文字宽一点，整体靠左放。
+def _compact_weights(rows, available=None):
+    """按内容算出各列建议宽度（紧凑比例），返回宽度列表。
+    宽度只比表头文字稍宽：避免撑满后两列之间空白大到像楚河汉界。
+    available 给出时整体等比压缩，保证不超版心。
     """
-    from docx.oxml.ns import qn as _qn
     ncols = max(len(r) for r in rows)
     widths = []
     for ci in range(ncols):
@@ -1505,46 +1544,18 @@ def _size_table_compact(table, rows, available=None):
     if available and total > available:
         k = available / total
         widths = [max(1000, int(x * k)) for x in widths]
+    return widths
 
-    tbl = table._tbl
-    tblPr = tbl.tblPr
-    if tblPr is None:
-        tblPr = tbl.makeelement(_qn('w:tblPr'), {})
-        tbl.insert(0, tblPr)
-    grid = tbl.find(_qn('w:tblGrid'))
-    for i, c in enumerate(grid.findall(_qn('w:gridCol')) if grid is not None else []):
-        if i < len(widths):
-            c.set(_qn('w:w'), str(widths[i]))
-    tblW = tblPr.find(_qn('w:tblW'))
-    if tblW is None:
-        tblW = tblPr.makeelement(_qn('w:tblW'), {})
-        tblPr.append(tblW)
-    tblW.set(_qn('w:type'), 'dxa')
-    tblW.set(_qn('w:w'), str(sum(widths)))
-    ind = tblPr.find(_qn('w:tblInd'))
-    if ind is None:
-        ind = tblPr.makeelement(_qn('w:tblInd'), {})
-        tblPr.append(ind)
-    ind.set(_qn('w:type'), 'dxa')
-    ind.set(_qn('w:w'), '0')
-    for old in tblPr.findall(_qn('w:jc')):
-        tblPr.remove(old)
-    layout = tblPr.find(_qn('w:tblLayout'))
-    if layout is None:
-        layout = tblPr.makeelement(_qn('w:tblLayout'), {})
-        tblPr.append(layout)
-    layout.set(_qn('w:type'), 'fixed')
-    for row in table.rows:
-        for ci, c in enumerate(row.cells):
-            tcPr = c._tc.find(_qn('w:tcPr'))
-            if tcPr is None:
-                continue
-            w_el = tcPr.find(_qn('w:tcW'))
-            if w_el is None:
-                w_el = tcPr.makeelement(_qn('w:tcW'), {})
-                tcPr.append(w_el)
-            w_el.set(_qn('w:type'), 'dxa')
-            w_el.set(_qn('w:w'), str(widths[ci] if ci < len(widths) else widths[-1]))
+
+def _size_table_compact(table, rows, available=None):
+    """按内容定列宽比例，并「根据窗口调整表格」铺满版心。
+
+    旧逻辑按内容算紧凑宽度后固定倒左（tblLayout=fixed），用户实测每次都得手动
+    选中表格→AutoFit 到窗口。现在保留紧凑的列宽**比例**，整体铺满版心，既好看了
+    又不用手动调。
+    """
+    widths = _compact_weights(rows, available)
+    _apply_autofit_window(table._tbl, weights=widths)
 
 
 def _add_nested_table(container, rows):
@@ -1575,21 +1586,12 @@ def _add_nested_table(container, rows):
                 qn('w:val'): 'single', qn('w:sz'): '4', qn('w:space'): '0',
                 qn('w:color'): '000000'})
             borders.append(el)
-    # 数据表按内容给列宽（紧凑、靠左）；不撑满整栏，否则列间空白过大
-    parent_tc = getattr(container, "_tc", None)
-    available = None
-    if parent_tc is not None:
-        tcPr = parent_tc.find(qn('w:tcPr'))
-        if tcPr is not None:
-            tw = tcPr.find(qn('w:tcW'))
-            if tw is not None and tw.get(qn('w:w')):
-                try:
-                    available = int(tw.get(qn('w:w'))) - 216
-                except Exception:
-                    available = None
-    elif hasattr(container, "sections"):
-        available = _doc_text_width_dxa(container)
-    _size_table_compact(table, rows, available)
+    # 数据表按内容算列宽比例（哪个表头文字长哪列就宽些），再整体「根据窗口调整
+    # 表格」铺满版心：保持紧凑比例的观感，同时自动贴满页面宽度，用户不用再手动
+    # AutoFit。曾尝试紧凑靠左（_size_table_compact），但用户实测每次都要手动
+    # 选中表格→右键→自动调整→根据窗口调整表格，体验差。
+    widths = _compact_weights(rows, None)
+    _apply_autofit_window(table._tbl, weights=widths)
     for ri, row in enumerate(rows):
         for ci in range(ncols):
             val = row[ci] if ci < len(row) else ""

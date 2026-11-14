@@ -4,7 +4,7 @@
 把用户已确认满意的排班效果固化为基线，防止后续改动无意破坏。
 
 覆盖（全部来自用户确认的那一版）：
-  1. 表格版式：两表等宽、贴版心左右边距、fixed 布局、无居中
+  1. 表格版式：两表等宽、贴版心左右边距、autofit(根据窗口调整) 铺满、无居中
   2. 字体：标题宋体四号(14pt)加粗 / 正文宋体小四(12pt)不加粗
   3. 行距：固定值 18pt（exact），字间距正文 -6 / 标题 -4
   4. 编号：统一 `1. 2. 3.`，连续递增，左边缘对齐
@@ -101,20 +101,24 @@ def main():
         check(f'版心宽 {body_w} dxa（期望{GOLD["body_width_dxa"]}）',
               body_w == GOLD['body_width_dxa'])
 
-        print('\n== 2. 表格版式（两表边框重合、贴版心）==')
+        print('\n== 2. 表格版式（两表边框重合、贴版心、自动铺满窗口）==')
         lefts, rights = set(), set()
         for ti, t in enumerate(doc.tables):
             pr = t._tbl.tblPr
             lay = pr.find(qn('w:tblLayout'))
-            check(f'table{ti} 布局 fixed',
-                  lay is not None and lay.get(qn('w:type')) == 'fixed')
+            check(f'table{ti} 布局 autofit(根据窗口调整)',
+                  lay is not None and lay.get(qn('w:type')) == 'autofit')
             check(f'table{ti} 无居中 jc', pr.find(qn('w:jc')) is None)
             grid = t._tbl.find(qn('w:tblGrid'))
-            total = sum(int(g.get(qn('w:w')) or 0)
-                        for g in grid.findall(qn('w:gridCol')))
+            gtot = sum(int(g.get(qn('w:w')) or 0)
+                       for g in grid.findall(qn('w:gridCol')))
+            # 铺满版心：grid 缩放到 body_w，同时 tblW 以 pct 100% (5000) 表示
+            body_w = GOLD['body_width_dxa']
+            check(f'table{ti} grid 贴合版心 ({gtot}=={body_w})', gtot == body_w)
             tblW = pr.find(qn('w:tblW'))
-            check(f'table{ti} tblW==ΣgridCols ({total})',
-                  tblW is not None and int(tblW.get(qn('w:w')) or 0) == total)
+            check(f'table{ti} tblW pct=100% (5000)',
+                  tblW is not None and tblW.get(qn('w:type')) == 'pct' and
+                  int(tblW.get(qn('w:w')) or 0) == 5000)
             mar = pr.find(qn('w:tblCellMar'))
             if mar is not None:
                 l = mar.find(qn('w:left'))
@@ -128,7 +132,7 @@ def main():
                 px = int(tblp.get(qn('w:tblpX')))
             left = GOLD['body_left_dxa'] + px
             lefts.add(left)
-            rights.add(left + total)
+            rights.add(left + body_w)
         check(f'两表左边界一致 {sorted(lefts)}', len(lefts) == 1)
         check(f'两表右边界一致 {sorted(rights)}', len(rights) == 1)
         check(f'左边界=版心左 {GOLD["body_left_dxa"]}', lefts == {GOLD['body_left_dxa']})
